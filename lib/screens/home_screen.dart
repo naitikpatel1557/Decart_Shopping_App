@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // <-- ADDED FIRESTORE IMPORT
 import '../models/product_model.dart';
 import '../services/database_service.dart';
+import '../services/auth_service.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -16,9 +19,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
   // Navigation Index
   int _selectedIndex = 0;
 
-  // Authentication State
-  final bool _isLoggedIn = false; // Keep false to show Login/Register
-  final String _userName = '';
+  // Auth Controllers & State
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+
+  bool _isLoginMode = true;
+  bool _isLoading = false;
 
   // Theme Colors
   final Color brandColor = const Color(0xFF0F4C5C);
@@ -31,13 +39,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
       key: _scaffoldKey,
       backgroundColor: _selectedIndex == 4 ? Colors.white : Colors.grey.shade50,
 
-      // The side drawer
       drawer: _buildCustomDrawer(),
-
-      // Dynamically switch AppBar based on selected tab
       appBar: _selectedIndex == 4 ? _buildAccountAppBar() : _buildHomeAppBar(),
-
-      // Dynamically switch Body based on selected tab
       body: _buildBodyContent(),
 
       // --- BOTTOM NAVIGATION BAR ---
@@ -116,7 +119,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         icon: const Icon(Icons.arrow_back, color: Color(0xFF0F4C5C)),
         onPressed: () {
           setState(() {
-            _selectedIndex = 0; // Go back to Home tab when back is pressed
+            _selectedIndex = 0;
           });
         },
       ),
@@ -146,6 +149,29 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildAccountBody() {
+    if (FirebaseAuth.instance.currentUser != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 80),
+            const SizedBox(height: 16),
+            const Text("You are logged in!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(FirebaseAuth.instance.currentUser!.email ?? '', style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () async {
+                await _authService.logoutUser();
+                setState(() {}); // Refresh UI
+              },
+              child: const Text("Log Out"),
+            )
+          ],
+        ),
+      );
+    }
+
     return Column(
       children: [
         Expanded(
@@ -162,66 +188,69 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Sign in or create account',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+                    Text(
+                      _isLoginMode ? 'Sign in' : 'Create account',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Enter Mobile number or Email',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
 
+                    if (!_isLoginMode) ...[
+                      const Text('Full Name', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 45,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: TextField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(border: InputBorder.none, hintText: 'First and Last name'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    const Text('Email address', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
                     Container(
-                      height: 50,
+                      height: 45,
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              border: Border(right: BorderSide(color: Colors.grey.shade400)),
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(3),
-                                bottomLeft: Radius.circular(3),
-                              ),
-                            ),
-                            child: const Row(
-                              children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('IN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                                    Text('+91', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                                SizedBox(width: 4),
-                                Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 12.0),
-                              child: TextField(
-                                decoration: InputDecoration(
-                                  hintText: 'Mobile number or email address',
-                                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        child: TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(border: InputBorder.none, hintText: 'Enter your email'),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    const Text('Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 45,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        child: TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(border: InputBorder.none, hintText: 'At least 6 characters'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
                     SizedBox(
                       width: double.infinity,
@@ -236,18 +265,61 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             side: const BorderSide(color: Color(0xFFFCD200)),
                           ),
                         ),
-                        onPressed: () {
-                          // TODO: Handle Login Logic
+                        onPressed: _isLoading ? null : () async {
+                          setState(() => _isLoading = true);
+
+                          String? result;
+                          if (_isLoginMode) {
+                            result = await _authService.loginUser(
+                                email: _emailController.text.trim(),
+                                password: _passwordController.text.trim()
+                            );
+                          } else {
+                            result = await _authService.registerUser(
+                                name: _nameController.text.trim(),
+                                email: _emailController.text.trim(),
+                                password: _passwordController.text.trim()
+                            );
+                          }
+
+                          setState(() => _isLoading = false);
+
+                          if (result == "Success") {
+                            _emailController.clear();
+                            _passwordController.clear();
+                            _nameController.clear();
+                            setState(() => _selectedIndex = 0);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(_isLoginMode ? "Logged in securely!" : "Account created successfully!")),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result ?? "An error occurred")));
+                          }
                         },
-                        child: const Text('Continue', style: TextStyle(fontSize: 15)),
+                        child: _isLoading
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                            : const Text('Continue', style: TextStyle(fontSize: 15)),
                       ),
                     ),
-                    const SizedBox(height: 20),
 
-                    const Text(
-                      "By continuing, you agree to Decart's Conditions of Use and Privacy Notice.",
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(_isLoginMode ? "New to Decart? " : "Already have an account? ", style: const TextStyle(fontSize: 13)),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() { _isLoginMode = !_isLoginMode; });
+                          },
+                          child: Text(
+                              _isLoginMode ? "Create an account" : "Sign in",
+                              style: TextStyle(color: Colors.blue.shade700, fontSize: 13, fontWeight: FontWeight.bold)
+                          ),
+                        ),
+                      ],
                     ),
+
                     const SizedBox(height: 20),
                     Divider(color: Colors.grey.shade200, thickness: 1.5),
                     const SizedBox(height: 16),
@@ -271,7 +343,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ),
 
-        // Footer Section
         Container(
           padding: const EdgeInsets.symmetric(vertical: 24),
           color: Colors.grey.shade50,
@@ -290,7 +361,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                '© 2026, Decart.com, Inc. or its affiliates',
+                '© 1996-2026, Decart.com, Inc. or its affiliates',
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
               ),
             ],
@@ -408,6 +479,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
   // ==========================================
 
   Widget _buildCustomDrawer() {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    final bool isLoggedIn = currentUser != null;
+
     return Drawer(
       backgroundColor: drawerBgColor,
       child: SafeArea(
@@ -430,7 +504,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.orangeAccent, width: 2),
                         ),
-                        child: Icon(_isLoggedIn ? Icons.person_outline : Icons.login_rounded, color: Colors.orangeAccent, size: 28),
+                        child: Icon(isLoggedIn ? Icons.person_outline : Icons.login_rounded, color: Colors.orangeAccent, size: 28),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -439,18 +513,42 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           children: [
                             const Text('DECÁRT', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
 
-                            // ----- LOGIN ROUTING TRIGGER IS HERE -----
-                            if (_isLoggedIn) ...[
-                              Text(_userName.isNotEmpty ? _userName : 'User', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                              const Text('Premium Active Member', style: TextStyle(color: Color(0xFF2DD4BF), fontSize: 10)),
-                            ] else ...[
+                            // ----- NAME FETCHING LOGIC HERE -----
+                            if (isLoggedIn)
+                              FutureBuilder<DocumentSnapshot>(
+                                future: FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get(),
+                                builder: (context, snapshot) {
+                                  String displayName = 'Loading...';
+
+                                  if (snapshot.connectionState == ConnectionState.done) {
+                                    if (snapshot.hasData && snapshot.data!.exists) {
+                                      var data = snapshot.data!.data() as Map<String, dynamic>?;
+                                      displayName = data?['name'] ?? 'User';
+                                    } else {
+                                      displayName = 'User';
+                                    }
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayName,
+                                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const Text('Premium Active Member', style: TextStyle(color: Color(0xFF2DD4BF), fontSize: 10)),
+                                    ],
+                                  );
+                                },
+                              )
+                            else
                               GestureDetector(
-                                // When tapped, close the drawer and switch to the Account tab!
                                 onTap: () {
                                   Navigator.pop(context);
                                   setState(() { _selectedIndex = 4; });
                                 },
-                                // Make the touch target larger by keeping it transparent
                                 behavior: HitTestBehavior.opaque,
                                 child: const Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,8 +558,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   ],
                                 ),
                               ),
-                            ],
-                            // ------------------------------------------
                           ],
                         ),
                       ),
@@ -483,14 +579,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   _drawerItem(icon: Icons.inventory_2_outlined, title: 'Orders'),
                   _drawerItem(icon: Icons.local_offer_outlined, title: 'My Coupons', trailing: _buildNewBadge()),
                   _drawerItem(icon: Icons.headset_mic_outlined, title: 'Help & Support'),
-                  if (_isLoggedIn) ...[
+                  if (isLoggedIn) ...[
                     _drawerItem(icon: Icons.location_on_outlined, title: 'My Address'),
                     _drawerItem(icon: Icons.info_outline, title: 'Account Settings'),
                   ],
                   _drawerItem(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy'),
                   _drawerItem(icon: Icons.description_outlined, title: 'Terms & Conditions'),
                   const SizedBox(height: 16),
-                  if (_isLoggedIn) _drawerItem(icon: Icons.logout, title: 'Logout', isLogout: true),
+                  if (isLoggedIn) _drawerItem(icon: Icons.logout, title: 'Logout', isLogout: true, onTap: () async {
+                    await _authService.logoutUser();
+                    Navigator.pop(context);
+                    setState(() {}); // Refresh State
+                  }),
                 ],
               ),
             ),

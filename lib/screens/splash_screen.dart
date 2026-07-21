@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
-// 1. IMPORT YOUR HOME SCREEN HERE
-// Ensure this path is correct based on where your files are located
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,13 +18,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToNextScreen() {
     Timer(const Duration(seconds: 3), () {
-      // 2. UNCOMMENTED NAVIGATION LOGIC
-      // pushReplacement ensures the user cannot swipe back to the splash screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          // Calls the ProductListScreen class from your home_screen.dart file
-          builder: (context) => ProductListScreen(),
+          builder: (context) => const ProductListScreen(),
         ),
       );
     });
