@@ -25,4 +25,6 @@ class Product {
       imageUrls: List<String>.from(data['imageUrls'] ?? []), id: '',
     );
   }
+
+  Object? get id => null;
 }
