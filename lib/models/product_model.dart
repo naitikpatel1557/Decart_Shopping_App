@@ -12,7 +12,7 @@ class Product {
     required this.name,
     required this.category,
     required this.imageUrls,
-    required this.price,
+    required this.price, required String id,
   });
 
   // This factory constructor converts Firestore document data into a Product object
@@ -22,7 +22,7 @@ class Product {
       name: data['name'] ?? '',
       price: (data['price'] ?? 0.0).toDouble(),
       category: data['category'] ?? '',
-      imageUrls: List<String>.from(data['imageUrls'] ?? []),
+      imageUrls: List<String>.from(data['imageUrls'] ?? []), id: '',
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import 'categories_tab.dart';
 
 // Import our new extracted modular pages
 import 'home_tab.dart';
@@ -40,7 +41,6 @@ class _MainScreenState extends State<MainScreen> {
       drawer: _buildCustomDrawer(),
       appBar: _selectedIndex == 4 ? _buildAccountAppBar() : _buildHomeAppBar(),
 
-      // Look how clean the body router is now!
       body: _buildBodyContent(),
 
       bottomNavigationBar: Container(
@@ -70,9 +70,11 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildBodyContent() {
     switch (_selectedIndex) {
       case 0:
-        return const HomeTab(); // Call the extracted Home file
+        return HomeTab(onNavigateToCategories: () => _switchTab(1));
+      case 1:
+        return const CategoriesTab();
       case 4:
-        return AccountTab(onNavigateHome: () => _switchTab(0)); // Call the extracted Account file
+        return AccountTab(onNavigateHome: () => _switchTab(0));
       default:
         return const Center(child: Text("Coming Soon... Create more modular tabs!"));
     }
@@ -175,7 +177,10 @@ class _MainScreenState extends State<MainScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: [
                   _drawerItem(icon: Icons.home_outlined, title: 'Home', isSelected: _selectedIndex == 0, onTap: () { Navigator.pop(context); _switchTab(0); }),
-                  _drawerItem(icon: Icons.grid_view, title: 'Categories'),
+
+                  // --- UPDATED: Categories button in drawer navigates to tab index 1 ---
+                  _drawerItem(icon: Icons.grid_view, title: 'Categories', isSelected: _selectedIndex == 1, onTap: () { Navigator.pop(context); _switchTab(1); }),
+
                   _drawerItem(icon: Icons.shopping_cart_outlined, title: 'Cart'),
                   _drawerItem(icon: Icons.favorite_border, title: 'Wishlist'),
                   _drawerItem(icon: Icons.inventory_2_outlined, title: 'Orders'),
