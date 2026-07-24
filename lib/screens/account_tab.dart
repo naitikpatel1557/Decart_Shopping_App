@@ -19,8 +19,6 @@ class _AccountTabState extends State<AccountTab> {
 
   bool _isLoginMode = true;
   bool _isLoading = false;
-
-  // --- NEW: Track password visibility ---
   bool _obscurePassword = true;
 
   @override
@@ -98,7 +96,7 @@ class _AccountTabState extends State<AccountTab> {
                           padding: const EdgeInsets.symmetric(horizontal: 12.0),
                           child: TextField(
                               controller: _passwordController,
-                              obscureText: _obscurePassword, // <-- BOUND TO VARIABLE
+                              obscureText: _obscurePassword,
                               decoration: const InputDecoration(border: InputBorder.none, hintText: 'At least 6 characters')
                           )
                       ),
@@ -106,7 +104,6 @@ class _AccountTabState extends State<AccountTab> {
 
                     const SizedBox(height: 8),
 
-                    // --- NEW: SHOW PASSWORD CHECKBOX ---
                     Row(
                       children: [
                         SizedBox(
@@ -126,7 +123,6 @@ class _AccountTabState extends State<AccountTab> {
                         const Text('Show password', style: TextStyle(fontSize: 13)),
                       ],
                     ),
-                    // -----------------------------------
 
                     const SizedBox(height: 20),
 
@@ -138,18 +134,30 @@ class _AccountTabState extends State<AccountTab> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: Color(0xFFFCD200))),
                         ),
                         onPressed: _isLoading ? null : () async {
+                          // 1. Turn on loading spinner
                           setState(() => _isLoading = true);
+
                           String? result = _isLoginMode
                               ? await _authService.loginUser(email: _emailController.text.trim(), password: _passwordController.text.trim())
                               : await _authService.registerUser(name: _nameController.text.trim(), email: _emailController.text.trim(), password: _passwordController.text.trim());
 
-                          setState(() => _isLoading = false);
+                          // 2. Prevent errors if the user clicked away during loading
+                          if (!mounted) return;
 
+                          // 3. Handle Navigation smoothly
                           if (result == "Success") {
-                            _emailController.clear(); _passwordController.clear(); _nameController.clear();
-                            widget.onNavigateHome();
+                            _emailController.clear();
+                            _passwordController.clear();
+                            _nameController.clear();
+
+                            // Show success message
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isLoginMode ? "Logged in securely!" : "Account created successfully!")));
+
+                            // Navigate IMMEDIATELY to home without calling setState again
+                            widget.onNavigateHome();
                           } else {
+                            // Only turn off the loading spinner if there was an ERROR (so they can try again)
+                            setState(() => _isLoading = false);
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result ?? "An error occurred")));
                           }
                         },
