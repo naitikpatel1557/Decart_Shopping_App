@@ -3,11 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 
-// Import our tabs
+// Import our tabs & screens
 import 'home_tab.dart';
 import 'categories_tab.dart';
 import 'wishlist_tab.dart';
 import 'account_tab.dart';
+import 'search_screen.dart'; // <-- IMPORT THE NEW SEARCH SCREEN
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,6 +20,9 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final AuthService _authService = AuthService();
+
+  // --- NEW: Search Controller ---
+  final TextEditingController _searchController = TextEditingController();
 
   int _selectedIndex = 0;
 
@@ -43,6 +47,12 @@ class _MainScreenState extends State<MainScreen> {
 
   void _switchTab(int index) {
     setState(() { _selectedIndex = index; });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose(); // Don't forget to dispose controllers!
+    super.dispose();
   }
 
   @override
@@ -82,7 +92,10 @@ class _MainScreenState extends State<MainScreen> {
           onToggleWishlist: _toggleWishlist,
         );
       case 1:
-        return const CategoriesTab();
+        return CategoriesTab(
+          wishlistIds: _wishlistIds,
+          onToggleWishlist: _toggleWishlist,
+        );
       case 2:
         return WishlistTab(
           wishlistIds: _wishlistIds,
@@ -127,8 +140,40 @@ class _MainScreenState extends State<MainScreen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Container(
-            height: 48, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-            child: Row(children: [const SizedBox(width: 12), Icon(Icons.search, color: Colors.grey.shade600), const SizedBox(width: 12), Text('Search for products...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14))]),
+            height: 48,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (query) {
+                if (query.trim().isNotEmpty) {
+                  // 1. SAFE FIX: Hide keyboard first before navigating
+                  FocusManager.instance.primaryFocus?.unfocus();
+
+                  // 2. Navigate to the Search Screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SearchScreen(
+                          searchQuery: query.trim(),wishlistIds: _wishlistIds,
+                          onToggleWishlist: _toggleWishlist
+                      ),
+                    ),
+                  ).then((_) {
+                    // 3. SAFE FIX: Clear the text only AFTER returning to this screen
+                    _searchController.clear();
+                  });
+                }
+              },
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                hintText: 'Search for products...',
+                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
           ),
         ),
       ),
@@ -139,7 +184,6 @@ class _MainScreenState extends State<MainScreen> {
     return AppBar(backgroundColor: Colors.white, elevation: 0, centerTitle: true, leading: IconButton(icon: const Icon(Icons.arrow_back, color: Color(0xFF0F4C5C)), onPressed: () => _switchTab(0)), title: const Text('DECÁRT.in', style: TextStyle(color: Colors.black87, fontFamily: 'Times New Roman', letterSpacing: 2.0, fontSize: 20, fontWeight: FontWeight.bold)));
   }
 
-
   Widget _buildCustomDrawer() {
     final User? currentUser = FirebaseAuth.instance.currentUser;
     final bool isLoggedIn = currentUser != null;
@@ -149,7 +193,6 @@ class _MainScreenState extends State<MainScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            // --- HEADER WITH CLOSE BUTTON & PROFILE INFO ---
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Column(
@@ -234,7 +277,6 @@ class _MainScreenState extends State<MainScreen> {
             Divider(color: Colors.white.withOpacity(0.1), height: 1),
             const SizedBox(height: 8),
 
-            // --- SCROLLABLE MENU ITEMS ---
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -245,7 +287,6 @@ class _MainScreenState extends State<MainScreen> {
                   _drawerItem(icon: Icons.favorite_border, title: 'Wishlist', isSelected: _selectedIndex == 2, onTap: () { Navigator.pop(context); _switchTab(2); }),
                   _drawerItem(icon: Icons.shopping_bag_outlined, title: 'Orders', isSelected: _selectedIndex == 3, onTap: () { Navigator.pop(context); _switchTab(3); }),
 
-                  // My Coupons with "NEW" badge container
                   Container(
                     margin: const EdgeInsets.only(bottom: 4),
                     decoration: BoxDecoration(color: Colors.transparent, borderRadius: BorderRadius.circular(12)),
@@ -288,7 +329,6 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
 
-            // --- FOOTER VERSION TEXT ---
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(

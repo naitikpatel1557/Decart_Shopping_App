@@ -19,12 +19,27 @@ class WishlistTab extends StatefulWidget {
 class _WishlistTabState extends State<WishlistTab> {
   final DatabaseService _databaseService = DatabaseService();
 
-  // Fallback products matching the home tab
+  // --- UPDATED: Now contains all 12 Home & Kitchen products! ---
   final List<Product> _fallbackProducts = [
-    Product(id: '1', name: 'Stainless Steel Cookware Set (5 Pieces)', price: 1499, imageUrls: ['https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80'], productId: '', category: ''),
-    Product(id: '2', name: 'Mixer Grinder (750W Powertron)', price: 2199, imageUrls: ['https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=400&q=80'], productId: '', category: ''),
-    Product(id: '3', name: 'Electric Kettle (1.8L Premium Auto-Cutoff)', price: 899, imageUrls: ['https://images.unsplash.com/photo-1574269909862-7e1d70bb8078?w=400&q=80'], productId: '', category: ''), // Fixed URL
-    Product(id: '4', name: 'Non-Stick Frying Pan (24cm with Lid)', price: 799, imageUrls: ['https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?w=400&q=80'], productId: '', category: ''),
+    // Original Trending Products
+    Product(id: '1', name: 'Stainless Steel Cookware Set (5 Pieces)', price: 1499, imageUrls: ['https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80'], productId: '1', category: ''),
+    Product(id: '2', name: 'Mixer Grinder (750W Powertron)', price: 2199, imageUrls: ['https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=400&q=80'], productId: '2', category: ''),
+    Product(id: '3', name: 'Electric Kettle (1.8L Premium Auto-Cutoff)', price: 899, imageUrls: ['https://images.unsplash.com/photo-1574269909862-7e1d70bb8078?w=400&q=80'], productId: '3', category: ''),
+    Product(id: '4', name: 'Non-Stick Frying Pan (24cm with Lid)', price: 799, imageUrls: ['https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?w=400&q=80'], productId: '4', category: ''),
+
+    // New 12 Home & Kitchen Products
+    Product(id: 'hk1', name: 'Manual Compact High-Velocity Vegetable Chopper', price: 349, imageUrls: ['https://images.unsplash.com/photo-1581622558667-3419a8dc5f83?w=400&q=80'], productId: 'hk1', category: 'Home & Kitchen'),
+    Product(id: 'hk2', name: 'Digital Air Fryer (4.2L Rapid Heat)', price: 4999, imageUrls: ['https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?w=400&q=80'], productId: 'hk2', category: 'Home & Kitchen'),
+    Product(id: 'hk3', name: 'Stainless Steel Cookware Set (5 Pieces)', price: 1499, imageUrls: ['https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80'], productId: 'hk3', category: 'Home & Kitchen'),
+    Product(id: 'hk4', name: 'Automatic Drip Espresso Coffee Maker', price: 2199, imageUrls: ['https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&q=80'], productId: 'hk4', category: 'Home & Kitchen'),
+    Product(id: 'hk5', name: 'Non-Stick Frying Pan (24cm with Lid)', price: 799, imageUrls: ['https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?w=400&q=80'], productId: 'hk5', category: 'Home & Kitchen'),
+    Product(id: 'hk6', name: 'Electric Kettle (1.8L Premium Auto-Cutoff)', price: 899, imageUrls: ['https://images.unsplash.com/photo-1574269909862-7e1d70bb8078?w=400&q=80'], productId: 'hk6', category: 'Home & Kitchen'),
+    Product(id: 'hk7', name: 'Premium Teak Wood Cutting Board', price: 549, imageUrls: ['https://images.unsplash.com/photo-1593010996841-f67f259de4b7?w=400&q=80'], productId: 'hk7', category: 'Home & Kitchen'),
+    Product(id: 'hk8', name: 'Silicone Cooking Utensils Set (12 Pcs)', price: 999, imageUrls: ['https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?w=400&q=80'], productId: 'hk8', category: 'Home & Kitchen'),
+    Product(id: 'hk9', name: 'Microwave Safe Glass Bowls (Set of 3)', price: 449, imageUrls: ['https://images.unsplash.com/photo-1622484211148-52f1b1c676d0?w=400&q=80'], productId: 'hk9', category: 'Home & Kitchen'),
+    Product(id: 'hk10', name: 'Heavy Duty Mixer Grinder (750W)', price: 2499, imageUrls: ['https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=400&q=80'], productId: 'hk10', category: 'Home & Kitchen'),
+    Product(id: 'hk11', name: 'Stainless Steel Insulated Water Bottle (1L)', price: 699, imageUrls: ['https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&q=80'], productId: 'hk11', category: 'Home & Kitchen'),
+    Product(id: 'hk12', name: 'Digital Kitchen Weighing Scale', price: 299, imageUrls: ['https://images.unsplash.com/photo-1586716402203-79219bede43c?w=400&q=80'], productId: 'hk12', category: 'Home & Kitchen'),
   ];
 
   @override
@@ -41,7 +56,7 @@ class _WishlistTabState extends State<WishlistTab> {
               const SizedBox(width: 8),
               const Text(
                 'MY WISHLIST',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontFamily: 'Times New Roman'),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontFamily: 'Times New Roman'),
               ),
             ],
           ),
@@ -82,7 +97,7 @@ class _WishlistTabState extends State<WishlistTab> {
           allProducts = snapshot.data!;
         }
 
-        // --- FIX: Filter products using the Safe ID logic ---
+        // --- Filter products using the Safe ID logic ---
         List<Product> favoritedProducts = allProducts.where((product) {
           final String safeId = (product.id.toString().isNotEmpty && product.id.toString() != "null")
               ? product.id.toString()
@@ -112,7 +127,7 @@ class _WishlistTabState extends State<WishlistTab> {
   }
 
   Widget _buildProductCard(Product product, int index) {
-    // --- FIX: Use the Safe ID for the card as well ---
+    // --- Use the Safe ID for the card as well ---
     final String safeId = (product.id.toString().isNotEmpty && product.id.toString() != "null")
         ? product.id.toString()
         : product.name;

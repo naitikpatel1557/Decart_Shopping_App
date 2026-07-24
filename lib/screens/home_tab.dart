@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/database_service.dart';
+import '../screens/category_products_screen.dart';
 
 class HomeTab extends StatefulWidget {
   final VoidCallback onNavigateToCategories;
@@ -80,23 +81,38 @@ class _HomeTabState extends State<HomeTab> {
                   mainAxisSpacing: 12
               ),
               itemBuilder: (context, index) {
-                return Column(
-                  children: [
-                    Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-                        child: ClipOval(child: Image.network(_categories[index]['imageUrl']!, fit: BoxFit.cover))
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                        _categories[index]['name']!,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 1.2)
-                    )
-                  ],
+                return GestureDetector(
+                  onTap: () {
+                    // Navigate to the Category Products Screen!
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CategoryProductsScreen(
+                          categoryName: _categories[index]['name']!,
+                          wishlistIds: widget.wishlistIds,
+                          onToggleWishlist: widget.onToggleWishlist,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
+                          child: ClipOval(child: Image.network(_categories[index]['imageUrl']!, fit: BoxFit.cover))
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                          _categories[index]['name']!,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 1.2)
+                      )
+                    ],
+                  ),
                 );
               },
             ),

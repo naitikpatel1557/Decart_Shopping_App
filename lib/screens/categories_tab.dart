@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'category_products_screen.dart'; // <-- IMPORT THE SCREEN WE MADE EARLIER
 
 class CategoriesTab extends StatelessWidget {
-  const CategoriesTab({super.key});
+  // --- NEW: Add wishlist variables to pass to the next screen ---
+  final Set<String> wishlistIds;
+  final Function(String, String) onToggleWishlist;
+
+  const CategoriesTab({
+    super.key,
+    required this.wishlistIds,
+    required this.onToggleWishlist,
+  });
 
   final List<Map<String, String>> _allCategories = const [
     {'name': 'Home & Kitchen', 'imageUrl': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=300&q=80'},
@@ -59,45 +68,59 @@ class CategoriesTab extends StatelessWidget {
               ),
               itemBuilder: (context, index) {
                 final category = _allCategories[index];
-                return Column(
-                  children: [
-                    AspectRatio(
-                      aspectRatio: 1, // Keeps the image box a perfect square
-                      child: Container(
-                        decoration: BoxDecoration(
-                          // --- CHANGED: Replaced circle with a rounded rectangle ---
-                            borderRadius: BorderRadius.circular(16),
-                            color: const Color(0xFFF3F4F6), // A soft light-grey/blue background color
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04), // Softer shadow
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
-                              )
-                            ]
+
+                // --- NEW: GestureDetector to navigate to the products screen ---
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CategoryProductsScreen(
+                          categoryName: category['name']!,
+                          wishlistIds: wishlistIds,
+                          onToggleWishlist: onToggleWishlist,
                         ),
-                        // --- CHANGED: Used ClipRRect instead of ClipOval ---
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            category['imageUrl']!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 1, // Keeps the image box a perfect square
+                        child: Container(
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: const Color(0xFFF3F4F6),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                )
+                              ]
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              category['imageUrl']!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      category['name']!,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.2),
-                    )
-                  ],
+                      const SizedBox(height: 10),
+                      Text(
+                        category['name']!,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.2),
+                      )
+                    ],
+                  ),
                 );
               },
             ),
