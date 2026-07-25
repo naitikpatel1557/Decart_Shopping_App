@@ -1,4 +1,35 @@
-User-Side
+Admin Panel
+   
+  -> Login/Logout
+  	-> User Management (Update, Delete)
+	-> Add Category
+		-> Add Product & Management Categories wise (Add Item, Remove Item, Update Item, Stock Count)
+	-> Order Management 
+		-> (Track, Approve, Pack, Ship, or Cancel customer purchases)
+	-> Discounts & Marketing
+		-> (Create promo codes, coupons, and special sale events)
+	-> Analytics
+		-> (View reports on daily revenue, traffic, and sales trends)	
+	-> Addvertise Management Banner
+	-> Tranding Products management
+	
 
-Profile:
-	Login/Logout
+
+
+User Panel 
+
+ -> Profile:
+    -> Login/Logout
+    -> Change Username & Password
+    -> Order History
+    -> Cart
+    -> Wishlist
+    -> Search & Filter
+    -> Multiple Address
+    -> Notification alert for order 
+    -> Order
+    -> Payment Options
+    -> Order Tracking
+
+
+

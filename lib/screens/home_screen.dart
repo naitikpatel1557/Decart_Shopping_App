@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import 'address_screen.dart';
+import 'orders_tab.dart';
 
 // Import our tabs & screens
 import 'home_tab.dart';
@@ -102,7 +104,9 @@ class _MainScreenState extends State<MainScreen> {
           onToggleWishlist: _toggleWishlist,
         );
       case 3:
-        return const Center(child: Text("Orders Page")); // Orders tab placeholder
+        return OrdersTab(
+          onNavigateToHome: () => _switchTab(0),
+        );
       case 4:
         return AccountTab(onNavigateHome: () => _switchTab(0));
       default:
@@ -308,7 +312,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
 
                   _drawerItem(icon: Icons.headset_mic_outlined, title: 'Help & Support', onTap: () { Navigator.pop(context); }),
-                  _drawerItem(icon: Icons.location_on_outlined, title: 'My Address', onTap: () { Navigator.pop(context); }),
+                  _drawerItem(icon: Icons.location_on_outlined, title: 'My Address', onTap: () {Navigator.pop(context);Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressScreen()));}),
                   _drawerItem(icon: Icons.info_outline, title: 'Account Settings', onTap: () { Navigator.pop(context); }),
                   _drawerItem(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () { Navigator.pop(context); }),
                   _drawerItem(icon: Icons.description_outlined, title: 'Terms & Conditions', onTap: () { Navigator.pop(context); }),

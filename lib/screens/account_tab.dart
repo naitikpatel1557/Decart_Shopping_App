@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/database_service.dart';
+import 'address_screen.dart';
+import 'orders_tab.dart';
 
 class AccountTab extends StatefulWidget {
   final VoidCallback onNavigateHome;
@@ -13,6 +17,8 @@ class AccountTab extends StatefulWidget {
 
 class _AccountTabState extends State<AccountTab> {
   final AuthService _authService = AuthService();
+  final DatabaseService _databaseService = DatabaseService();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
@@ -29,33 +35,159 @@ class _AccountTabState extends State<AccountTab> {
     super.dispose();
   }
 
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter your email address in the box above first!')));
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Password reset link sent to $email!'), backgroundColor: Colors.green));
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'An error occurred.')));
+      }
+    }
+  }
+
+  void _showEditProfileDialog(String currentName) {
+    final TextEditingController editNameController = TextEditingController(text: currentName);
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text("Edit Profile", style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Times New Roman')),
+            content: TextField(
+              controller: editNameController,
+              decoration: InputDecoration(
+                labelText: "Full Name",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey))
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F4C5C)),
+                onPressed: () async {
+                  if (editNameController.text.trim().isNotEmpty) {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser!.uid)
+                        .update({'name': editNameController.text.trim(), 'fullName': editNameController.text.trim()});
+                    if (context.mounted) Navigator.pop(context);
+                  }
+                },
+                child: const Text("Save", style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Show Profile if already logged in
     if (FirebaseAuth.instance.currentUser != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 80),
-            const SizedBox(height: 16),
-            const Text("You are logged in!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(FirebaseAuth.instance.currentUser!.email ?? '', style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                await _authService.logoutUser();
-                setState(() {}); // Refresh the tab
-              },
-              child: const Text("Log Out"),
-            )
-          ],
-        ),
+      final User user = FirebaseAuth.instance.currentUser!;
+
+      return StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: Color(0xFF0F4C5C)));
+            }
+
+            String displayName = "User";
+            if (snapshot.hasData && snapshot.data!.exists) {
+              final data = snapshot.data!.data() as Map<String, dynamic>;
+              displayName = data['name'] ?? data['fullName'] ?? "User";
+            }
+
+            return SingleChildScrollView(
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+                    decoration: BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 45,
+                          backgroundColor: const Color(0xFF0F4C5C).withOpacity(0.1),
+                          child: Text(displayName[0].toUpperCase(), style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF0F4C5C))),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Times New Roman')),
+                        const SizedBox(height: 4),
+                        Text(user.email ?? '', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Profile Menu Options
+                  Container(
+                    color: Colors.white,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle), child: Icon(Icons.person_outline, color: Colors.blue.shade700)),
+                          title: const Text("Edit Profile", style: TextStyle(fontWeight: FontWeight.w500)),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                          onTap: () => _showEditProfileDialog(displayName),
+                        ),
+
+                        // --- NEW: MY ORDERS BUTTON ---
+                        const Divider(height: 1, indent: 60),
+                        ListTile(
+                          leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.purple.shade50, shape: BoxShape.circle), child: Icon(Icons.shopping_bag_outlined, color: Colors.purple.shade700)),
+                          title: const Text("My Orders", style: TextStyle(fontWeight: FontWeight.w500)),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(
+                                builder: (context) => const OrdersTab(isTab: false) // <--- Tells it to show the AppBar
+                            ));
+                          },
+                        ),
+
+                        const Divider(height: 1, indent: 60),
+                        ListTile(
+                          leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.orange.shade50, shape: BoxShape.circle), child: Icon(Icons.location_on_outlined, color: Colors.orange.shade700)),
+                          title: const Text("My Addresses", style: TextStyle(fontWeight: FontWeight.w500)),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressScreen()));
+                          },
+                        ),
+
+                        const Divider(height: 1, indent: 60),
+                        ListTile(
+                          leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle), child: Icon(Icons.logout, color: Colors.red.shade700)),
+                          title: Text("Log Out", style: TextStyle(fontWeight: FontWeight.w500, color: Colors.red.shade700)),
+                          onTap: () async {
+                            await _authService.logoutUser();
+                            setState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
       );
     }
 
-    // Show Login/Register Form
     return Column(
       children: [
         Expanded(
@@ -88,7 +220,17 @@ class _AccountTabState extends State<AccountTab> {
                     ),
                     const SizedBox(height: 16),
 
-                    const Text('Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        if (_isLoginMode)
+                          GestureDetector(
+                            onTap: _resetPassword,
+                            child: const Text('Forgot password?', style: TextStyle(fontSize: 12, color: Color(0xFF0F4C5C), fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       height: 45, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(4)),
@@ -107,16 +249,10 @@ class _AccountTabState extends State<AccountTab> {
                     Row(
                       children: [
                         SizedBox(
-                          height: 24,
-                          width: 24,
+                          height: 24, width: 24,
                           child: Checkbox(
-                            value: !_obscurePassword,
-                            activeColor: const Color(0xFF0F4C5C),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                _obscurePassword = !(value ?? false);
-                              });
-                            },
+                            value: !_obscurePassword, activeColor: const Color(0xFF0F4C5C),
+                            onChanged: (bool? value) { setState(() { _obscurePassword = !(value ?? false); }); },
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -134,29 +270,31 @@ class _AccountTabState extends State<AccountTab> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: Color(0xFFFCD200))),
                         ),
                         onPressed: _isLoading ? null : () async {
-                          // 1. Turn on loading spinner
                           setState(() => _isLoading = true);
 
                           String? result = _isLoginMode
                               ? await _authService.loginUser(email: _emailController.text.trim(), password: _passwordController.text.trim())
                               : await _authService.registerUser(name: _nameController.text.trim(), email: _emailController.text.trim(), password: _passwordController.text.trim());
 
-                          // 2. Prevent errors if the user clicked away during loading
                           if (!mounted) return;
 
-                          // 3. Handle Navigation smoothly
                           if (result == "Success") {
                             _emailController.clear();
                             _passwordController.clear();
                             _nameController.clear();
 
-                            // Show success message
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isLoginMode ? "Logged in securely!" : "Account created successfully!")));
+                            try {
+                              final prodCheck = await FirebaseFirestore.instance.collection('products').limit(1).get();
+                              if (prodCheck.docs.isEmpty) {
+                                await _databaseService.uploadAllDummyData();
+                              }
+                            } catch (e) {
+                              debugPrint("Background upload failed: $e");
+                            }
 
-                            // Navigate IMMEDIATELY to home without calling setState again
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isLoginMode ? "Logged in securely!" : "Account created successfully!")));
                             widget.onNavigateHome();
                           } else {
-                            // Only turn off the loading spinner if there was an ERROR (so they can try again)
                             setState(() => _isLoading = false);
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result ?? "An error occurred")));
                           }
