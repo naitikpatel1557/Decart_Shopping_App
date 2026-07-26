@@ -1,4 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ADD THIS ENTIRE QUERIES BLOCK HERE -->
+    <queries>
+        <!-- Allows the app to open the phone dialer -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tel" />
+        </intent>
+
+        <!-- Allows the app to open the email client -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="mailto" />
+        </intent>
+    </queries>
+
     <application
         android:label="DECÁRT"
         android:name="${applicationName}"

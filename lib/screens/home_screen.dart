@@ -4,13 +4,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import 'address_screen.dart';
 import 'orders_tab.dart';
+import 'help_support_screen.dart';
 
 // Import our tabs & screens
 import 'home_tab.dart';
 import 'categories_tab.dart';
 import 'wishlist_tab.dart';
 import 'account_tab.dart';
-import 'search_screen.dart'; // <-- IMPORT THE NEW SEARCH SCREEN
+import 'search_screen.dart';
+import 'notification_screen.dart';
+import 'my_coupons_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -53,7 +56,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose(); // Don't forget to dispose controllers!
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -115,6 +118,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   PreferredSizeWidget _buildHomeAppBar() {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+
     return AppBar(
       backgroundColor: Colors.white, elevation: 0,
       leading: IconButton(icon: Icon(Icons.menu, color: brandColor), onPressed: () => _scaffoldKey.currentState?.openDrawer()),
@@ -122,20 +127,67 @@ class _MainScreenState extends State<MainScreen> {
       title: Text('DECÁRT', style: TextStyle(color: brandColor, fontFamily: 'Times New Roman', letterSpacing: 3.0, fontSize: 22, fontWeight: FontWeight.w600)),
       actions: [
         Center(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpSupportScreen()),
+              );
+            },
             child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.red.shade100)),
-                child: const Text('Support FAQs', style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold))
-            )
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.red.shade100),
+              ),
+              child: const Text('Support FAQs', style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ),
         ),
         const SizedBox(width: 4),
+
+        // --- UPDATED: DYNAMIC NOTIFICATION BADGE ---
         Stack(
             alignment: Alignment.center,
             children: [
-              IconButton(icon: Icon(Icons.notifications_none, color: brandColor), onPressed: () {}),
-              Positioned(right: 12, top: 12, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)))
+              IconButton(icon: Icon(Icons.notifications_none, color: brandColor), onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                );
+              }),
+
+              if (currentUser != null)
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(currentUser.uid)
+                      .collection('notifications')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      // Check if there is at least one notification where 'isRead' is not true
+                      bool hasUnread = snapshot.data!.docs.any((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return data['isRead'] != true;
+                      });
+
+                      if (hasUnread) {
+                        return Positioned(
+                            right: 12,
+                            top: 12,
+                            child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle))
+                        );
+                      }
+                    }
+                    // Return empty box if no unread notifications exist
+                    return const SizedBox.shrink();
+                  },
+                ),
             ]
         ),
+
         IconButton(icon: Icon(Icons.shopping_cart_outlined, color: brandColor), onPressed: () {}),
         const SizedBox(width: 4),
       ],
@@ -152,10 +204,8 @@ class _MainScreenState extends State<MainScreen> {
               textInputAction: TextInputAction.search,
               onSubmitted: (query) {
                 if (query.trim().isNotEmpty) {
-                  // 1. SAFE FIX: Hide keyboard first before navigating
                   FocusManager.instance.primaryFocus?.unfocus();
 
-                  // 2. Navigate to the Search Screen
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -165,7 +215,6 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                   ).then((_) {
-                    // 3. SAFE FIX: Clear the text only AFTER returning to this screen
                     _searchController.clear();
                   });
                 }
@@ -307,13 +356,21 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                         ],
                       ),
-                      onTap: () { Navigator.pop(context); },
+
+                      // --- UPDATED NAVIGATION ---
+                      onTap: () {
+                        Navigator.pop(context); // Closes the drawer
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const MyCouponsScreen())
+                        );
+                      },
                     ),
                   ),
 
-                  _drawerItem(icon: Icons.headset_mic_outlined, title: 'Help & Support', onTap: () { Navigator.pop(context); }),
+                  _drawerItem(icon: Icons.headset_mic_outlined, title: 'Help & Support', onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpSupportScreen()));}),
                   _drawerItem(icon: Icons.location_on_outlined, title: 'My Address', onTap: () {Navigator.pop(context);Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressScreen()));}),
-                  _drawerItem(icon: Icons.info_outline, title: 'Account Settings', onTap: () { Navigator.pop(context); }),
+                  _drawerItem(icon: Icons.info_outline, title: 'Account Settings', onTap: () { Navigator.pop(context); _switchTab(4); }),
                   _drawerItem(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () { Navigator.pop(context); }),
                   _drawerItem(icon: Icons.description_outlined, title: 'Terms & Conditions', onTap: () { Navigator.pop(context); }),
 

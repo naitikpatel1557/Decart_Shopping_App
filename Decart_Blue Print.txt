@@ -12,6 +12,8 @@ Admin Panel
 		-> (View reports on daily revenue, traffic, and sales trends)	
 	-> Addvertise Management Banner
 	-> Tranding Products management
+	-> support FAQ
+	-> Notification Push to the user
 	
 
 
@@ -30,6 +32,11 @@ User Panel
     -> Order
     -> Payment Options
     -> Order Tracking
+    -> support FOQ
+    -> Notification
+    -> Track the live location of user for address
+
+
 
 
 
