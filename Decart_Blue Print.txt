@@ -26,7 +26,7 @@ User Panel
     -> Order History
     -> Cart
     -> Wishlist
-    -> Search & Filter
+    -> Search & Filter(Category)
     -> Multiple Address
     -> Notification alert for order 
     -> Order

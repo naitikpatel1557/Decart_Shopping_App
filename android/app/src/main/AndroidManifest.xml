@@ -15,6 +15,10 @@
         </intent>
     </queries>
 
+    <!--  Detect the auto-location  -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:label="DECÁRT"
         android:name="${applicationName}"
