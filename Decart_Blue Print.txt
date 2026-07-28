@@ -28,13 +28,13 @@ User Panel
     -> Wishlist
     -> Search & Filter(Category)
     -> Multiple Address
-    -> Notification alert for order 
+    -> Notification alert for order
     -> Order
     -> Payment Options
     -> Order Tracking
     -> support FOQ
     -> Notification
-    -> Track the live location of user for address
+    -> Track the live location of user for address (Use current Location)
 
 
 

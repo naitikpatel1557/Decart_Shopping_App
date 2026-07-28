@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/database_service.dart';
-import '../screens/category_products_screen.dart';
+import 'category_product_screen.dart'; // <-- FIXED: Removed the 's' from the file name
+import 'product_details_screen.dart';
 
 class HomeTab extends StatefulWidget {
   final VoidCallback onNavigateToCategories;
-
   final Set<String> wishlistIds;
   final Function(String, String) onToggleWishlist;
 
@@ -67,7 +67,6 @@ class _HomeTabState extends State<HomeTab> {
           ),
           const SizedBox(height: 16),
 
-          // --- FIXED: Updated aspect ratio to 0.85 to completely prevent vertical overflow ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: GridView.builder(
@@ -76,17 +75,18 @@ class _HomeTabState extends State<HomeTab> {
               itemCount: _categories.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  childAspectRatio: 0.85, // Fixed ratio to provide ample vertical room
+                  childAspectRatio: 0.85,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 12
               ),
               itemBuilder: (context, index) {
                 return GestureDetector(
                   onTap: () {
-                    // Navigate to the Category Products Screen!
                     Navigator.push(
                       context,
                       MaterialPageRoute(
+                        // Make sure the class name in your file is CategoryProductsScreen
+                        // (even if the file name is category_product_screen.dart)
                         builder: (context) => CategoryProductsScreen(
                           categoryName: _categories[index]['name']!,
                           wishlistIds: widget.wishlistIds,
@@ -153,84 +153,101 @@ class _HomeTabState extends State<HomeTab> {
     final int reviews = 100 + (index * 43);
     final int originalPrice = (product.price * 1.4).round();
 
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 5,
-            child: Stack(
-              children: [
-                ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(12)), child: Container(width: double.infinity, color: Colors.grey.shade100, child: Image.network(product.imageUrls[0], fit: BoxFit.cover))),
-                Positioned(
-                  top: 8, right: 8,
-                  child: GestureDetector(
-                    onTap: () => widget.onToggleWishlist(safeId, product.name),
-                    child: Container(
-                      padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.pinkAccent : Colors.white, size: 16),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 8, left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFF047857), borderRadius: BorderRadius.circular(4)),
-                    child: const Text('40% OFF', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailsScreen(
+              product: product,
+              wishlistIds: widget.wishlistIds,
+              onToggleWishlist: (id, name) {
+                widget.onToggleWishlist(id, name);
+                setState(() {}); // Refresh home tab wishlist icon instantly
+              },
             ),
           ),
-          Expanded(
-            flex: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Stack(
                 children: [
-                  Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.2)),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
-                            const SizedBox(width: 2),
-                            Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
-                          ],
-                        ),
+                  ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(12)), child: Container(width: double.infinity, color: Colors.grey.shade100, child: Image.network(product.imageUrls[0], fit: BoxFit.cover))),
+                  Positioned(
+                    top: 8, right: 8,
+                    child: GestureDetector(
+                      onTap: () => widget.onToggleWishlist(safeId, product.name),
+                      child: Container(
+                        padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                        child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.pinkAccent : Colors.white, size: 16),
                       ),
-                      const SizedBox(width: 6),
-                      Text('($reviews)', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                    ],
+                    ),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('₹${product.price}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            Text('₹$originalPrice', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, decoration: TextDecoration.lineThrough))
-                          ]
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFD1FAE5).withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
-                        child: const Text('In Stock', style: TextStyle(color: Color(0xFF059669), fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
+                  Positioned(
+                    bottom: 8, left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFF047857), borderRadius: BorderRadius.circular(4)),
+                      child: const Text('40% OFF', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.2)),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
+                              const SizedBox(width: 2),
+                              Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text('($reviews)', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('₹${product.price}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('₹$originalPrice', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, decoration: TextDecoration.lineThrough))
+                            ]
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          decoration: BoxDecoration(color: const Color(0xFFD1FAE5).withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
+                          child: const Text('In Stock', style: TextStyle(color: Color(0xFF059669), fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

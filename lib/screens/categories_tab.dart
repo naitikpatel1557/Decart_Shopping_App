@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'category_products_screen.dart'; // <-- IMPORT THE SCREEN WE MADE EARLIER
+import 'category_product_screen.dart'; // <-- FIXED: Single import, without the 's'
 
 class CategoriesTab extends StatelessWidget {
-  // --- NEW: Add wishlist variables to pass to the next screen ---
   final Set<String> wishlistIds;
   final Function(String, String) onToggleWishlist;
 
@@ -62,19 +61,19 @@ class CategoriesTab extends StatelessWidget {
               itemCount: _allCategories.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                childAspectRatio: 0.70, // Slightly adjusted to fit the new rounded boxes perfectly
+                childAspectRatio: 0.70,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 24,
               ),
               itemBuilder: (context, index) {
                 final category = _allCategories[index];
 
-                // --- NEW: GestureDetector to navigate to the products screen ---
                 return GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
+                        // Make sure the class name in your file is CategoryProductsScreen
                         builder: (context) => CategoryProductsScreen(
                           categoryName: category['name']!,
                           wishlistIds: wishlistIds,

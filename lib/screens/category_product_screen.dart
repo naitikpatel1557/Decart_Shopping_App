@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/database_service.dart';
+import 'product_details_screen.dart';
 
 class CategoryProductsScreen extends StatefulWidget {
   final String categoryName;
@@ -22,8 +23,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
   final DatabaseService _databaseService = DatabaseService();
   final Color brandColor = const Color(0xFF0F4C5C);
 
-  // --- NEW: STATE VARIABLES FOR SORT & FILTER ---
-  String _selectedSort = 'Bestselling'; // Changed default to match new options
+  // --- STATE VARIABLES FOR SORT & FILTER ---
+  String _selectedSort = 'Bestselling';
   RangeValues _priceRange = const RangeValues(0, 10000);
   final double _maxPriceLimit = 10000;
 
@@ -43,7 +44,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     Product(id: 'hk12', name: 'Digital Kitchen Weighing Scale', price: 299, imageUrls: ['https://images.unsplash.com/photo-1586716402203-79219bede43c?w=400&q=80'], productId: 'hk12', category: 'Home & Kitchen'),
   ];
 
-  // --- UPDATED: BOTTOM SHEET FOR SORTING WITH NEW OPTIONS ---
+  // --- BOTTOM SHEET FOR SORTING WITH NEW OPTIONS ---
   void _showSortBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -81,7 +82,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
 
   // --- BOTTOM SHEET FOR FILTERING ---
   void _showFilterBottomSheet() {
-    // Create a temporary range value for the dialog state
     RangeValues tempRange = _priceRange;
 
     showModalBottomSheet(
@@ -107,8 +107,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                   const SizedBox(height: 24),
                   const Text('Price Range', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 16),
-
-                  // Shows current slider values
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -116,7 +114,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                       Text(tempRange.end >= _maxPriceLimit ? '₹${_maxPriceLimit.toInt()}+' : '₹${tempRange.end.toInt()}', style: TextStyle(color: brandColor, fontWeight: FontWeight.bold)),
                     ],
                   ),
-
                   RangeSlider(
                     values: tempRange,
                     min: 0,
@@ -128,7 +125,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                       setModalState(() => tempRange = values);
                     },
                   ),
-
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -154,7 +150,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     );
   }
 
-  // --- HELPER: Formats sort label for the top bar ---
   String _getShortSortLabel() {
     switch (_selectedSort) {
       case 'Price: Low to High': return 'Low to High';
@@ -188,7 +183,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       ),
       body: Column(
         children: [
-          // --- SORT & FILTER BAR CONNECTED TO LOGIC ---
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -208,8 +202,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                             Icon(Icons.swap_vert, color: Colors.teal.shade700, size: 20),
                             const SizedBox(width: 8),
                             const Text('Sort: ', style: TextStyle(color: Color(0xFF0F4C5C), fontSize: 14)),
-
-                            // Dynamically format UI string for space
                             Flexible(
                               child: Text(
                                 _getShortSortLabel(),
@@ -238,7 +230,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                 style: TextStyle(
                                     color: brandColor,
                                     fontSize: 14,
-                                    // Make it bold if a custom filter is applied
                                     fontWeight: (_priceRange.start > 0 || _priceRange.end < _maxPriceLimit) ? FontWeight.bold : FontWeight.normal
                                 )
                             ),
@@ -251,48 +242,39 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
               ),
             ),
           ),
-
-          // --- PRODUCTS GRID (WITH SORT & FILTER APPLIED) ---
           Expanded(
             child: StreamBuilder<List<Product>>(
               stream: _databaseService.getProducts(),
               builder: (context, snapshot) {
-                // 1. Fetch Data
                 List<Product> rawProducts = (snapshot.hasData && snapshot.data!.isNotEmpty)
                     ? snapshot.data!.where((p) => p.category == widget.categoryName).toList()
-                    : List.from(_categoryProducts); // Use List.from to make a mutable copy
+                    : List.from(_categoryProducts);
 
                 if (rawProducts.isEmpty) rawProducts = List.from(_categoryProducts);
 
-                // 2. Apply Filters (Price Range)
                 List<Product> productsToDisplay = rawProducts.where((p) {
-                  // If max limit is selected, don't cap the high end
                   bool withinHigh = _priceRange.end >= _maxPriceLimit ? true : p.price <= _priceRange.end;
                   bool withinLow = p.price >= _priceRange.start;
                   return withinLow && withinHigh;
                 }).toList();
 
-                // 3. Apply New Sorting Logic
                 if (_selectedSort == 'Price: Low to High') {
                   productsToDisplay.sort((a, b) => a.price.compareTo(b.price));
                 } else if (_selectedSort == 'Price: High to Low') {
                   productsToDisplay.sort((a, b) => b.price.compareTo(a.price));
                 } else if (_selectedSort == 'Avg. Customer Review') {
-                  // Sort by generated fake rating (Highest to Lowest)
                   productsToDisplay.sort((a, b) {
                     double ratingA = 4.0 + (a.name.length % 10) / 10.0;
                     double ratingB = 4.0 + (b.name.length % 10) / 10.0;
                     return ratingB.compareTo(ratingA);
                   });
                 } else if (_selectedSort == 'Bestselling') {
-                  // Sort by generated fake review count (Highest to Lowest)
                   productsToDisplay.sort((a, b) {
                     int reviewsA = 100 + ((a.price.toInt() % 50) * 13);
                     int reviewsB = 100 + ((b.price.toInt() % 50) * 13);
                     return reviewsB.compareTo(reviewsA);
                   });
                 } else if (_selectedSort == 'Newest Arrivals') {
-                  // Simulate newest arrivals by reversing the default fetch order
                   productsToDisplay = productsToDisplay.reversed.toList();
                 }
 
@@ -321,108 +303,120 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     );
   }
 
-  // --- UPDATED PRODUCT CARD FOR CATEGORY SCREEN ---
   Widget _buildCategoryProductCard(Product product) {
     final String safeId = (product.id.toString().isNotEmpty && product.id.toString() != "null") ? product.id.toString() : product.name;
     final bool isFavorite = widget.wishlistIds.contains(safeId);
 
-    // Fake dynamic stats based on string length/price to keep them consistent even when sorted
     final double rating = 4.0 + (product.name.length % 10) / 10.0;
     final int reviews = 100 + ((product.price.toInt() % 50) * 13);
     final int originalPrice = (product.price * 1.4).round();
     final int discountPercent = ((originalPrice - product.price) / originalPrice * 100).round();
 
-    return Container(
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
-          border: Border.all(color: Colors.grey.shade100)
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 5,
-            child: Stack(
-              children: [
-                ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                    child: Container(width: double.infinity, color: Colors.grey.shade50, child: Image.network(product.imageUrls[0], fit: BoxFit.cover))
-                ),
-                Positioned(
-                  top: 8, right: 8,
-                  child: GestureDetector(
-                    onTap: () {
-                      // 1. Update the master wishlist data in MainScreen
-                      widget.onToggleWishlist(safeId, product.name);
-
-                      // 2. Tell THIS screen to redraw instantly
-                      setState(() {});
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.pinkAccent : Colors.white, size: 16),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 8, left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFF047857), borderRadius: BorderRadius.circular(4)),
-                    child: Text('$discountPercent% OFF', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailsScreen(
+              product: product,
+              wishlistIds: widget.wishlistIds,
+              onToggleWishlist: (id, name) {
+                widget.onToggleWishlist(id, name);
+                setState(() {});
+              },
             ),
           ),
-          Expanded(
-            flex: 5,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+            border: Border.all(color: Colors.grey.shade100)
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Stack(
                 children: [
-                  Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.2)),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
-                            const SizedBox(width: 2),
-                            Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text('($reviews)', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                    ],
+                  ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      child: Container(width: double.infinity, color: Colors.grey.shade50, child: Image.network(product.imageUrls[0], fit: BoxFit.cover))
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('₹${product.price}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 4),
-                          Text('₹$originalPrice', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, decoration: TextDecoration.lineThrough)),
-                        ],
+                  Positioned(
+                    top: 8, right: 8,
+                    child: GestureDetector(
+                      onTap: () {
+                        widget.onToggleWishlist(safeId, product.name);
+                        setState(() {});
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                        child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.pinkAccent : Colors.white, size: 16),
                       ),
-                      const SizedBox(height: 2),
-                      const Text('Inclusive of all taxes', style: TextStyle(color: Color(0xFF047857), fontSize: 9, fontWeight: FontWeight.w600)),
-                    ],
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 8, left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFF047857), borderRadius: BorderRadius.circular(4)),
+                      child: Text('$discountPercent% OFF', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              flex: 5,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.2)),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
+                              const SizedBox(width: 2),
+                              Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text('($reviews)', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('₹${product.price}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 4),
+                            Text('₹$originalPrice', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, decoration: TextDecoration.lineThrough)),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        const Text('Inclusive of all taxes', style: TextStyle(color: Color(0xFF047857), fontSize: 9, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

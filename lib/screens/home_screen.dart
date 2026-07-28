@@ -147,7 +147,6 @@ class _MainScreenState extends State<MainScreen> {
         ),
         const SizedBox(width: 4),
 
-        // --- UPDATED: DYNAMIC NOTIFICATION BADGE ---
         Stack(
             alignment: Alignment.center,
             children: [
@@ -167,7 +166,6 @@ class _MainScreenState extends State<MainScreen> {
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
-                      // Check if there is at least one notification where 'isRead' is not true
                       bool hasUnread = snapshot.data!.docs.any((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         return data['isRead'] != true;
@@ -181,7 +179,6 @@ class _MainScreenState extends State<MainScreen> {
                         );
                       }
                     }
-                    // Return empty box if no unread notifications exist
                     return const SizedBox.shrink();
                   },
                 ),
@@ -356,10 +353,8 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                         ],
                       ),
-
-                      // --- UPDATED NAVIGATION ---
                       onTap: () {
-                        Navigator.pop(context); // Closes the drawer
+                        Navigator.pop(context);
                         Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const MyCouponsScreen())
