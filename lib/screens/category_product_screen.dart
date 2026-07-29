@@ -23,28 +23,10 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
   final DatabaseService _databaseService = DatabaseService();
   final Color brandColor = const Color(0xFF0F4C5C);
 
-  // --- STATE VARIABLES FOR SORT & FILTER ---
   String _selectedSort = 'Bestselling';
   RangeValues _priceRange = const RangeValues(0, 10000);
   final double _maxPriceLimit = 10000;
 
-  // --- 12 DUMMY PRODUCTS FOR "HOME & KITCHEN" ---
-  final List<Product> _categoryProducts = [
-    Product(id: 'hk1', name: 'Manual Compact High-Velocity Vegetable Chopper', price: 349, imageUrls: ['https://images.unsplash.com/photo-1581622558667-3419a8dc5f83?w=400&q=80'], productId: 'hk1', category: 'Home & Kitchen'),
-    Product(id: 'hk2', name: 'Digital Air Fryer (4.2L Rapid Heat)', price: 4999, imageUrls: ['https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?w=400&q=80'], productId: 'hk2', category: 'Home & Kitchen'),
-    Product(id: 'hk3', name: 'Stainless Steel Cookware Set (5 Pieces)', price: 1499, imageUrls: ['https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80'], productId: 'hk3', category: 'Home & Kitchen'),
-    Product(id: 'hk4', name: 'Automatic Drip Espresso Coffee Maker', price: 2199, imageUrls: ['https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&q=80'], productId: 'hk4', category: 'Home & Kitchen'),
-    Product(id: 'hk5', name: 'Non-Stick Frying Pan (24cm with Lid)', price: 799, imageUrls: ['https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?w=400&q=80'], productId: 'hk5', category: 'Home & Kitchen'),
-    Product(id: 'hk6', name: 'Electric Kettle (1.8L Premium Auto-Cutoff)', price: 899, imageUrls: ['https://images.unsplash.com/photo-1574269909862-7e1d70bb8078?w=400&q=80'], productId: 'hk6', category: 'Home & Kitchen'),
-    Product(id: 'hk7', name: 'Premium Teak Wood Cutting Board', price: 549, imageUrls: ['https://images.unsplash.com/photo-1593010996841-f67f259de4b7?w=400&q=80'], productId: 'hk7', category: 'Home & Kitchen'),
-    Product(id: 'hk8', name: 'Silicone Cooking Utensils Set (12 Pcs)', price: 999, imageUrls: ['https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?w=400&q=80'], productId: 'hk8', category: 'Home & Kitchen'),
-    Product(id: 'hk9', name: 'Microwave Safe Glass Bowls (Set of 3)', price: 449, imageUrls: ['https://images.unsplash.com/photo-1622484211148-52f1b1c676d0?w=400&q=80'], productId: 'hk9', category: 'Home & Kitchen'),
-    Product(id: 'hk10', name: 'Heavy Duty Mixer Grinder (750W)', price: 2499, imageUrls: ['https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=400&q=80'], productId: 'hk10', category: 'Home & Kitchen'),
-    Product(id: 'hk11', name: 'Stainless Steel Insulated Water Bottle (1L)', price: 699, imageUrls: ['https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&q=80'], productId: 'hk11', category: 'Home & Kitchen'),
-    Product(id: 'hk12', name: 'Digital Kitchen Weighing Scale', price: 299, imageUrls: ['https://images.unsplash.com/photo-1586716402203-79219bede43c?w=400&q=80'], productId: 'hk12', category: 'Home & Kitchen'),
-  ];
-
-  // --- BOTTOM SHEET FOR SORTING WITH NEW OPTIONS ---
   void _showSortBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -80,7 +62,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     );
   }
 
-  // --- BOTTOM SHEET FOR FILTERING ---
   void _showFilterBottomSheet() {
     RangeValues tempRange = _priceRange;
 
@@ -173,12 +154,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
         ),
         title: Text(
           widget.categoryName,
-          style: TextStyle(
-            color: brandColor,
-            fontFamily: 'Times New Roman',
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
+          style: TextStyle(color: brandColor, fontFamily: 'Times New Roman', fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
       body: Column(
@@ -226,12 +202,12 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                             Icon(Icons.tune, color: brandColor, size: 20),
                             const SizedBox(width: 8),
                             Text(
-                                'Filter',
-                                style: TextStyle(
-                                    color: brandColor,
-                                    fontSize: 14,
-                                    fontWeight: (_priceRange.start > 0 || _priceRange.end < _maxPriceLimit) ? FontWeight.bold : FontWeight.normal
-                                )
+                              'Filter',
+                              style: TextStyle(
+                                color: brandColor,
+                                fontSize: 14,
+                                fontWeight: (_priceRange.start > 0 || _priceRange.end < _maxPriceLimit) ? FontWeight.bold : FontWeight.normal,
+                              ),
                             ),
                           ],
                         ),
@@ -244,13 +220,41 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
           ),
           Expanded(
             child: StreamBuilder<List<Product>>(
-              stream: _databaseService.getProducts(),
+              stream: _databaseService.getProductsByCategory(widget.categoryName),
               builder: (context, snapshot) {
-                List<Product> rawProducts = (snapshot.hasData && snapshot.data!.isNotEmpty)
-                    ? snapshot.data!.where((p) => p.category == widget.categoryName).toList()
-                    : List.from(_categoryProducts);
 
-                if (rawProducts.isEmpty) rawProducts = List.from(_categoryProducts);
+                // --- NEW: CATCHES FIREBASE ERRORS AND PRINTS THEM ---
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        "Firebase Error: ${snapshot.error}",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                List<Product> rawProducts = snapshot.data ?? [];
+
+                if (rawProducts.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade300),
+                        const SizedBox(height: 16),
+                        const Text("No products found in this category.", style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  );
+                }
 
                 List<Product> productsToDisplay = rawProducts.where((p) {
                   bool withinHigh = _priceRange.end >= _maxPriceLimit ? true : p.price <= _priceRange.end;
@@ -304,13 +308,15 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
   }
 
   Widget _buildCategoryProductCard(Product product) {
-    final String safeId = (product.id.toString().isNotEmpty && product.id.toString() != "null") ? product.id.toString() : product.name;
-    final bool isFavorite = widget.wishlistIds.contains(safeId);
-
+    final bool isFavorite = widget.wishlistIds.contains(product.id);
     final double rating = 4.0 + (product.name.length % 10) / 10.0;
     final int reviews = 100 + ((product.price.toInt() % 50) * 13);
-    final int originalPrice = (product.price * 1.4).round();
-    final int discountPercent = ((originalPrice - product.price) / originalPrice * 100).round();
+
+    final int originalPrice = product.originalPrice != null
+        ? product.originalPrice!.round()
+        : (product.price * 1.4).round();
+
+    final int discountPercent = originalPrice > 0 ? (((originalPrice - product.price) / originalPrice) * 100).round() : 0;
 
     return GestureDetector(
       onTap: () {
@@ -330,10 +336,10 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
-            border: Border.all(color: Colors.grey.shade100)
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+          border: Border.all(color: Colors.grey.shade100),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,30 +349,40 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
               child: Stack(
                 children: [
                   ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                      child: Container(width: double.infinity, color: Colors.grey.shade50, child: Image.network(product.imageUrls[0], fit: BoxFit.cover))
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: Container(
+                      width: double.infinity,
+                      color: Colors.grey.shade50,
+                      child: Image.network(
+                        product.imageUrls.isNotEmpty ? product.imageUrls[0] : '',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, color: Colors.grey),
+                      ),
+                    ),
                   ),
                   Positioned(
                     top: 8, right: 8,
                     child: GestureDetector(
                       onTap: () {
-                        widget.onToggleWishlist(safeId, product.name);
+                        widget.onToggleWishlist(product.id, product.name);
                         setState(() {});
                       },
                       child: Container(
-                        padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
                         child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.pinkAccent : Colors.white, size: 16),
                       ),
                     ),
                   ),
-                  Positioned(
-                    bottom: 8, left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      decoration: BoxDecoration(color: const Color(0xFF047857), borderRadius: BorderRadius.circular(4)),
-                      child: Text('$discountPercent% OFF', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                  if (discountPercent > 0)
+                    Positioned(
+                      bottom: 8, left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(color: const Color(0xFF047857), borderRadius: BorderRadius.circular(4)),
+                        child: Text('$discountPercent% OFF', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -402,9 +418,10 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text('₹${product.price}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text('₹${product.price.toInt()}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                             const SizedBox(width: 4),
-                            Text('₹$originalPrice', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, decoration: TextDecoration.lineThrough)),
+                            if (originalPrice > product.price)
+                              Text('₹$originalPrice', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, decoration: TextDecoration.lineThrough)),
                           ],
                         ),
                         const SizedBox(height: 2),

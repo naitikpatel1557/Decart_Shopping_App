@@ -35,6 +35,69 @@ User Panel
     -> support FOQ
     -> Notification
     -> Track the live location of user for address (Use current Location)
+    -> Product Suggestion
+    -> User Review
+
+
+
+Product Category
+Electronics------
+		|
+		|
+		|
+		---Product1------
+		|		|
+		|		|
+		|		|
+		|		---Product Details (Image, price, product details, feature, and many more)
+		|		
+		|
+		|---Product2-----
+		|		|
+		|		|
+		|		|
+		|		---Product Details (Image, price, product details, feature, and many more)
+		|
+		|---Product3-----
+		|		|
+		|		|
+		|		|
+		|		---Product Details (Image, price, product details, feature, and many more)
+		|
+		|---Product4-----
+				|
+				|
+				|
+				---Product Details (Image, price, product details, feature, and many more)
+
+Home & Kitchen---
+		|
+		|
+		|
+		---Product1------
+		|		|
+		|		|
+		|		|
+		|		---Product Details (Image, price, product details, feature, and many more)
+		|		
+		|
+		|---Product2-----
+		|		|
+		|		|
+		|		|
+		|		---Product Details (Image, price, product details, feature, and many more)
+		|
+		|---Product3-----
+		|		|
+		|		|
+		|		|
+		|		---Product Details (Image, price, product details, feature, and many more)
+		|
+		|---Product4-----
+				|
+				|
+				|
+				---Product Details (Image, price, product details, feature, and many more)
 
 
 
