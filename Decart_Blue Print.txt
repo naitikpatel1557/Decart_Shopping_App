@@ -37,6 +37,8 @@ User Panel
     -> Track the live location of user for address (Use current Location)
     -> Product Suggestion
     -> User Review
+    -> Browsing History (Product)
+    -> Share product to another person
 
 
 
