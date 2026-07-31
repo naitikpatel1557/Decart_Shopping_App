@@ -4,9 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart'; // <-- IMPORTED QR PACKAGE
 import '../models/product_model.dart';
 import '../services/database_service.dart';
 import 'write_review_screen.dart';
+import 'dart:ui' as ui;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final Product product;
@@ -45,16 +49,101 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     super.dispose();
   }
 
-  // --- NEW: SHARE FUNCTION ---
   void _shareProduct(Product liveProduct) {
-    // This creates the text and link that will be sent to the other user
     final String shareText = "Check out this amazing product on Decart!\n\n"
         "${liveProduct.name}\n"
         "Price: ₹${liveProduct.price.toInt()}\n\n"
         "View it here: https://decart.app/product/${liveProduct.id}";
-
-    // Opens the phone's native sharing menu (WhatsApp, Mail, Messages, etc.)
     Share.share(shareText);
+  }
+
+  // --- NEW: GENERATES A PNG OF THE QR CODE AND SHARES IT ---
+  Future<void> _shareQRCodeImage(Product liveProduct) async {
+    try {
+      final String productLink = "https://decart.app/product/${liveProduct.id}";
+
+      // 1. Generate the QR Code as an image painter
+      final qrPainter = QrPainter(
+        data: productLink,
+        version: QrVersions.auto,
+        gapless: true,
+        color: const Color(0xFF000000), // Black QR blocks
+        emptyColor: const Color(0xFFFFFFFF), // White background
+      );
+
+      // 2. Convert to raw PNG image data (1024x1024 resolution)
+      final picData = await qrPainter.toImageData(1024, format: ui.ImageByteFormat.png);
+      if (picData == null) return;
+
+      // 3. Save it to a temporary file on the device
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/decart_product_qr.png').create();
+      await file.writeAsBytes(picData.buffer.asUint8List());
+
+      // 4. Share the image file natively
+      await Share.shareXFiles(
+          [XFile(file.path)],
+          text: 'Scan this QR to view ${liveProduct.name} on Decart!'
+      );
+    } catch (e) {
+      debugPrint("Error sharing QR: $e");
+    }
+  }
+
+
+  void _showQRCode(Product liveProduct) {
+    final String productLink = "https://decart.app/product/${liveProduct.id}";
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Column(
+            children: [
+              Text("Scan to view", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: brandColor)),
+              const SizedBox(height: 4),
+              Text(
+                  liveProduct.name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 250,
+            height: 250,
+            child: Center(
+              child: QrImageView(
+                data: productLink,
+                version: QrVersions.auto,
+                size: 200.0,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black87),
+                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black87),
+              ),
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(context); // Close the popup
+                _shareQRCodeImage(liveProduct); // <-- CALLS THE NEW IMAGE SHARING LOGIC!
+              },
+              icon: Icon(Icons.share_outlined, color: brandColor, size: 20),
+              label: Text("Share QR", style: TextStyle(color: brandColor, fontWeight: FontWeight.bold)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            )
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _addToCart(String liveName, int livePrice, String liveImageUrl) async {
@@ -118,16 +207,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             elevation: 0,
             leading: IconButton(icon: Icon(Icons.arrow_back, color: brandColor), onPressed: () => Navigator.pop(context)),
             actions: [
+              // --- NEW: QR CODE BUTTON ---
+              IconButton(
+                icon: Icon(Icons.qr_code_scanner, color: brandColor),
+                onPressed: () => _showQRCode(liveProduct),
+              ),
               IconButton(
                   icon: Icon(Icons.share_outlined, color: brandColor),
-                  onPressed: () {
-                    final String shareText = "Check out this amazing product on Decart!\n\n"
-                        "${liveProduct.name}\n"
-                        "Price: ₹${liveProduct.price.toInt()}\n\n"
-                        "View it here: https://decart.app/product/${liveProduct.id}";
-
-                    Share.share(shareText);
-                  }
+                  onPressed: () => _shareProduct(liveProduct)
               ),
               IconButton(
                 icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.pinkAccent : brandColor),

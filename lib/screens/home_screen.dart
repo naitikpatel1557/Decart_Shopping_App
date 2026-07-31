@@ -14,6 +14,8 @@ import 'account_tab.dart';
 import 'search_screen.dart';
 import 'notification_screen.dart';
 import 'my_coupons_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_conditions_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -366,8 +368,8 @@ class _MainScreenState extends State<MainScreen> {
                   _drawerItem(icon: Icons.headset_mic_outlined, title: 'Help & Support', onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpSupportScreen()));}),
                   _drawerItem(icon: Icons.location_on_outlined, title: 'My Address', onTap: () {Navigator.pop(context);Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressScreen()));}),
                   _drawerItem(icon: Icons.info_outline, title: 'Account Settings', onTap: () { Navigator.pop(context); _switchTab(4); }),
-                  _drawerItem(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () { Navigator.pop(context); }),
-                  _drawerItem(icon: Icons.description_outlined, title: 'Terms & Conditions', onTap: () { Navigator.pop(context); }),
+                  _drawerItem(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen())); }),
+                  _drawerItem(icon: Icons.description_outlined, title: 'Terms & Conditions', onTap: () { Navigator.pop(context); Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => const TermsConditionsScreen()));}),
 
                   const SizedBox(height: 8),
                   if (isLoggedIn)
