@@ -1,3 +1,5 @@
+Google App Passwords: lxfe jakg mris ypcn
+
 Admin Panel
    
   -> Login/Logout
@@ -14,7 +16,9 @@ Admin Panel
 	-> Tranding Products management
 	-> support FAQ
 	-> Notification Push to the user
-	
+        -> change the privacy & policy to user side
+        -> Manage users Orders
+
 
 
 
@@ -39,7 +43,8 @@ User Panel
     -> User Review
     -> Browsing History (Product)
     -> Share product to another person
-
+    -> Place the order
+    -> Generate the invoice bill PDF to send Mail
 
 
 Product Category

@@ -16,6 +16,7 @@ import 'notification_screen.dart';
 import 'my_coupons_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_conditions_screen.dart';
+import 'cart_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -187,7 +188,12 @@ class _MainScreenState extends State<MainScreen> {
             ]
         ),
 
-        IconButton(icon: Icon(Icons.shopping_cart_outlined, color: brandColor), onPressed: () {}),
+        IconButton(
+            icon: Icon(Icons.shopping_cart_outlined, color: brandColor),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const CartScreen()));
+            }
+        ),
         const SizedBox(width: 4),
       ],
       bottom: PreferredSize(
@@ -335,7 +341,7 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   _drawerItem(icon: Icons.home_outlined, title: 'Home', isSelected: _selectedIndex == 0, onTap: () { Navigator.pop(context); _switchTab(0); }),
                   _drawerItem(icon: Icons.grid_view, title: 'Categories', isSelected: _selectedIndex == 1, onTap: () { Navigator.pop(context); _switchTab(1); }),
-                  _drawerItem(icon: Icons.shopping_cart_outlined, title: 'Cart', onTap: () { Navigator.pop(context); }),
+                  _drawerItem(icon: Icons.shopping_cart_outlined, title: 'Cart', onTap: () { Navigator.pop(context);Navigator.push(context, MaterialPageRoute(builder: (context) => const CartScreen()));}),
                   _drawerItem(icon: Icons.favorite_border, title: 'Wishlist', isSelected: _selectedIndex == 2, onTap: () { Navigator.pop(context); _switchTab(2); }),
                   _drawerItem(icon: Icons.shopping_bag_outlined, title: 'Orders', isSelected: _selectedIndex == 3, onTap: () { Navigator.pop(context); _switchTab(3); }),
 

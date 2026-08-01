@@ -146,7 +146,7 @@ class _AccountTabState extends State<AccountTab> {
                           onTap: () => _showEditProfileDialog(displayName),
                         ),
 
-                        // --- NEW: MY ORDERS BUTTON ---
+                        // --- FIXED: MY ORDERS BUTTON ---
                         const Divider(height: 1, indent: 60),
                         ListTile(
                           leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.purple.shade50, shape: BoxShape.circle), child: Icon(Icons.shopping_bag_outlined, color: Colors.purple.shade700)),
@@ -154,7 +154,7 @@ class _AccountTabState extends State<AccountTab> {
                           trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(
-                                builder: (context) => const OrdersTab(isTab: false) // <--- Tells it to show the AppBar
+                                builder: (context) => OrdersTab(onNavigateToHome: widget.onNavigateHome) // Fixed parameter!
                             ));
                           },
                         ),

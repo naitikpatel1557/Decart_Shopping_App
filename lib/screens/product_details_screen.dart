@@ -4,13 +4,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import 'package:share_plus/share_plus.dart';
-import 'package:qr_flutter/qr_flutter.dart'; // <-- IMPORTED QR PACKAGE
+import 'package:qr_flutter/qr_flutter.dart';
 import '../models/product_model.dart';
 import '../services/database_service.dart';
 import 'write_review_screen.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'cart_screen.dart';
+import 'checkout_screen.dart'; // <-- IMPORTED CHECKOUT SCREEN
 
 class ProductDetailsScreen extends StatefulWidget {
   final Product product;
@@ -36,6 +38,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   int _currentImageIndex = 0;
   int _selectedTab = 0;
   bool _isAddingToCart = false;
+  bool _isBuyingNow = false; // Add state for Buy Now loading
 
   final List<Product> _fallbackSimilarProducts = [
     Product(id: 's1', name: 'Premium Copper Water Bottle (1L)', price: 899, imageUrls: ['https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&q=80'], productId: 's1', category: 'Home & Kitchen'),
@@ -57,30 +60,25 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     Share.share(shareText);
   }
 
-  // --- NEW: GENERATES A PNG OF THE QR CODE AND SHARES IT ---
   Future<void> _shareQRCodeImage(Product liveProduct) async {
     try {
       final String productLink = "https://decart.app/product/${liveProduct.id}";
 
-      // 1. Generate the QR Code as an image painter
       final qrPainter = QrPainter(
         data: productLink,
         version: QrVersions.auto,
         gapless: true,
-        color: const Color(0xFF000000), // Black QR blocks
-        emptyColor: const Color(0xFFFFFFFF), // White background
+        color: const Color(0xFF000000),
+        emptyColor: const Color(0xFFFFFFFF),
       );
 
-      // 2. Convert to raw PNG image data (1024x1024 resolution)
       final picData = await qrPainter.toImageData(1024, format: ui.ImageByteFormat.png);
       if (picData == null) return;
 
-      // 3. Save it to a temporary file on the device
       final tempDir = await getTemporaryDirectory();
       final file = await File('${tempDir.path}/decart_product_qr.png').create();
       await file.writeAsBytes(picData.buffer.asUint8List());
 
-      // 4. Share the image file natively
       await Share.shareXFiles(
           [XFile(file.path)],
           text: 'Scan this QR to view ${liveProduct.name} on Decart!'
@@ -89,7 +87,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       debugPrint("Error sharing QR: $e");
     }
   }
-
 
   void _showQRCode(Product liveProduct) {
     final String productLink = "https://decart.app/product/${liveProduct.id}";
@@ -130,8 +127,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           actions: [
             TextButton.icon(
               onPressed: () {
-                Navigator.pop(context); // Close the popup
-                _shareQRCodeImage(liveProduct); // <-- CALLS THE NEW IMAGE SHARING LOGIC!
+                Navigator.pop(context);
+                _shareQRCodeImage(liveProduct);
               },
               icon: Icon(Icons.share_outlined, color: brandColor, size: 20),
               label: Text("Share QR", style: TextStyle(color: brandColor, fontWeight: FontWeight.bold)),
@@ -180,6 +177,66 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     }
   }
 
+  // --- NEW: BUY NOW FUNCTION ---
+  Future<void> _buyNow(Product liveProduct, String liveImageUrl) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please log in to purchase items.')));
+      return;
+    }
+
+    setState(() => _isBuyingNow = true);
+
+    try {
+      // 1. Add item to cart first (if not already there)
+      final cartRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').doc(liveProduct.id);
+      final docSnapshot = await cartRef.get();
+
+      if (!docSnapshot.exists) {
+        await cartRef.set({
+          'productId': liveProduct.id,
+          'name': liveProduct.name,
+          'price': liveProduct.price.toInt(),
+          'imageUrl': liveImageUrl,
+          'quantity': 1,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 2. Fetch the user's default delivery address
+      final addressSnapshot = await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('addresses').limit(1).get();
+
+      Map<String, dynamic> deliveryAddress = {};
+      if (addressSnapshot.docs.isNotEmpty) {
+        deliveryAddress = addressSnapshot.docs.first.data();
+      } else {
+        // Fallback placeholder if no address is found
+        deliveryAddress = {
+          'name': 'Customer',
+          'fullAddress': 'Please update your delivery address in checkout.',
+          'phone': ''
+        };
+      }
+
+      // 3. Navigate directly to Secure Checkout
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CheckoutScreen(
+              deliveryAddress: deliveryAddress,
+              totalAmount: liveProduct.price.toInt(),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isBuyingNow = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isFavorite = widget.wishlistIds.contains(widget.product.id);
@@ -207,7 +264,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             elevation: 0,
             leading: IconButton(icon: Icon(Icons.arrow_back, color: brandColor), onPressed: () => Navigator.pop(context)),
             actions: [
-              // --- NEW: QR CODE BUTTON ---
               IconButton(
                 icon: Icon(Icons.qr_code_scanner, color: brandColor),
                 onPressed: () => _showQRCode(liveProduct),
@@ -223,7 +279,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   setState(() {});
                 },
               ),
-              IconButton(icon: Icon(Icons.shopping_cart_outlined, color: brandColor), onPressed: () {}),
+              IconButton(
+                  icon: Icon(Icons.shopping_cart_outlined, color: brandColor),
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const CartScreen()));
+                  }
+              ),
               const SizedBox(width: 8),
             ],
           ),
@@ -448,9 +509,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.credit_card, color: Colors.white, size: 20),
-                      label: Text(liveProduct.inStock ? 'Buy Now' : 'Out of Stock', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      onPressed: liveProduct.inStock ? () {} : null,
+                      icon: _isBuyingNow
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.credit_card, color: Colors.white, size: 20),
+                      label: Text(
+                          _isBuyingNow ? 'Processing...' : (liveProduct.inStock ? 'Buy Now' : 'Out of Stock'),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
+                      ),
+                      // --- UPDATED: CALLS BUY NOW FUNCTION ---
+                      onPressed: (_isBuyingNow || !liveProduct.inStock) ? null : () => _buyNow(liveProduct, galleryImages.isNotEmpty ? galleryImages[0] : ''),
                     ),
                   ),
                 ],
