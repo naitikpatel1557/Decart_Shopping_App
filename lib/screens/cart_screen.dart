@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'address_screen.dart';
-import 'checkout_screen.dart'; // <-- Required for navigation
+import 'checkout_screen.dart';
+
+// --- IMPORTS FOR PRODUCT REDIRECTION ---
+import '../models/product_model.dart';
+import 'product_details_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -32,7 +36,7 @@ class CartScreen extends StatelessWidget {
     await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').doc(productId).delete();
   }
 
-  // --- NEW: ADDRESS SELECTION BOTTOM SHEET ---
+  // --- ADDRESS SELECTION BOTTOM SHEET ---
   void _showAddressSelection(BuildContext context, int totalAmount) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -115,23 +119,18 @@ class CartScreen extends StatelessWidget {
                                     title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
                                     subtitle: Text('$fullAddress\n$phone', style: TextStyle(color: Colors.grey.shade600, fontSize: 12, height: 1.4)),
                                     trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-
-                                    // --- UPDATED: THIS NOW PUSHES TO THE CHECKOUT SCREEN ---
                                     onTap: () {
                                       Navigator.pop(sheetContext); // Close sheet
-
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => CheckoutScreen(
-                                            deliveryAddress: addrData, // Passes the selected address
-                                            totalAmount: totalAmount,  // Passes the total price
+                                            deliveryAddress: addrData,
+                                            totalAmount: totalAmount,
                                           ),
                                         ),
                                       );
                                     },
-                                    // --------------------------------------------------------
-
                                   );
                                 },
                               ),
@@ -232,7 +231,8 @@ class CartScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final data = cartItems[index].data() as Map<String, dynamic>;
                     final docId = cartItems[index].id;
-                    return _buildCartItem(data, docId);
+                    // Pass the context here to allow navigation
+                    return _buildCartItem(context, data, docId);
                   },
                 ),
               ),
@@ -297,80 +297,108 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCartItem(Map<String, dynamic> data, String docId) {
+  // --- UPDATED: ADDED BuildContext & GestureDetector FOR NAVIGATION ---
+  Widget _buildCartItem(BuildContext context, Map<String, dynamic> data, String docId) {
     final String name = data['name'] ?? 'Unknown Product';
     final int price = data['price'] ?? 0;
     final int qty = data['quantity'] ?? 1;
     final String imageUrl = data['imageUrl'] ?? '';
+    final String productId = data['productId'] ?? docId;
+    final String category = data['category'] ?? 'Cart';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              imageUrl,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) => Container(width: 80, height: 80, color: Colors.grey.shade200, child: const Icon(Icons.image, color: Colors.grey)),
+    return GestureDetector(
+      onTap: () {
+        // Construct Product object from the cart data
+        final productDetails = Product(
+          id: productId,
+          name: name,
+          price: price.toDouble(),
+          imageUrls: [imageUrl],
+          productId: productId,
+          category: category,
+        );
+
+        // Navigate to the Product Details Screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailsScreen(
+              product: productDetails,
+              wishlistIds: const {}, // Cart doesn't strictly need to manage wishlist state here
+              onToggleWishlist: (id, name) {},
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(height: 8),
-                Text('₹$price', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F4C5C))),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        children: [
-                          InkWell(
-                            onTap: () => _updateQuantity(docId, qty, -1),
-                            child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), child: Icon(Icons.remove, size: 16)),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            color: Colors.grey.shade100,
-                            child: Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                          InkWell(
-                            onTap: () => _updateQuantity(docId, qty, 1),
-                            child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), child: Icon(Icons.add, size: 16)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-                      onPressed: () => _removeItem(docId),
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                    )
-                  ],
-                )
-              ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                imageUrl,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (c, e, s) => Container(width: 80, height: 80, color: Colors.grey.shade200, child: const Icon(Icons.image, color: Colors.grey)),
+              ),
             ),
-          )
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Text('₹$price', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F4C5C))),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            InkWell(
+                              onTap: () => _updateQuantity(docId, qty, -1),
+                              child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), child: Icon(Icons.remove, size: 16)),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              color: Colors.grey.shade100,
+                              child: Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                            InkWell(
+                              onTap: () => _updateQuantity(docId, qty, 1),
+                              child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), child: Icon(Icons.add, size: 16)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                        onPressed: () => _removeItem(docId),
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                      )
+                    ],
+                  )
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }

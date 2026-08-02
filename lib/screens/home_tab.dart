@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/database_service.dart';
-import 'category_product_screen.dart'; // <-- FIXED: Removed the 's' from the file name
+import 'category_product_screen.dart';
 import 'product_details_screen.dart';
 
 class HomeTab extends StatefulWidget {
@@ -25,6 +25,10 @@ class _HomeTabState extends State<HomeTab> {
   final PageController _pageController = PageController();
   int _currentBannerIndex = 0;
 
+  // --- ADDED SEARCH STATE VARIABLES ---
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   final List<Map<String, dynamic>> _banners = [
     {'tag': 'BEAUTY CARE', 'title': 'FLAT 40% OFF', 'subtitle': 'Organic Serums & Creams', 'colors': [const Color(0xFF04483C), const Color(0xFFDCA128)]},
     {'tag': 'MAKER GEAR', 'title': 'IOT SENSORS', 'subtitle': 'Power Sensors & Cameras', 'colors': [const Color(0xFF1E3A8A), const Color(0xFF9333EA)]},
@@ -47,102 +51,206 @@ class _HomeTabState extends State<HomeTab> {
   ];
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16), _buildBannerSection(), const SizedBox(height: 24),
-
-          // Categories Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(children: [Container(width: 3, height: 16, color: Colors.orangeAccent), const SizedBox(width: 8), const Text('CATEGORIES', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Times New Roman'))]),
-                GestureDetector(onTap: widget.onNavigateToCategories, child: const Row(children: [Text('See All', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)), SizedBox(width: 4), Icon(Icons.arrow_forward, size: 14)])),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _categories.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 12
+    return Column(
+      children: [
+        // =========================================================
+        // 1. STATIC SEARCH BAR (Fixed at the top)
+        // =========================================================
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 12.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase().trim();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      fillColor: Colors.white,
+                      filled: true,
+                      hintText: 'Search trending products...',
+                      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF0F4C5C))),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                          FocusScope.of(context).unfocus();
+                        },
+                      )
+                          : null,
+                    ),
+                  ),
+                ),
               ),
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        // Make sure the class name in your file is CategoryProductsScreen
-                        // (even if the file name is category_product_screen.dart)
-                        builder: (context) => CategoryProductsScreen(
-                          categoryName: _categories[index]['name']!,
-                          wishlistIds: widget.wishlistIds,
-                          onToggleWishlist: widget.onToggleWishlist,
+              const SizedBox(width: 8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F4C5C),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  minimumSize: const Size(0, 40),
+                ),
+                onPressed: () {
+                  FocusScope.of(context).unfocus();
+                },
+                child: const Text('Search', style: TextStyle(color: Colors.white, fontSize: 13)),
+              )
+            ],
+          ),
+        ),
+
+        // =========================================================
+        // 2. SCROLLABLE CONTENT AREA
+        // =========================================================
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                _buildBannerSection(),
+                const SizedBox(height: 24),
+
+                // Categories Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(children: [Container(width: 3, height: 16, color: Colors.orangeAccent), const SizedBox(width: 8), const Text('CATEGORIES', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Times New Roman'))]),
+                      GestureDetector(onTap: widget.onNavigateToCategories, child: const Row(children: [Text('See All', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)), SizedBox(width: 4), Icon(Icons.arrow_forward, size: 14)])),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Categories Grid
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _categories.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        childAspectRatio: 0.85,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 12
+                    ),
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CategoryProductsScreen(
+                                categoryName: _categories[index]['name']!,
+                                wishlistIds: widget.wishlistIds,
+                                onToggleWishlist: widget.onToggleWishlist,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Column(
+                          children: [
+                            Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
+                                child: ClipOval(child: Image.network(_categories[index]['imageUrl']!, fit: BoxFit.cover))
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                                _categories[index]['name']!,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 1.2)
+                            )
+                          ],
                         ),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Trending Products Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(children: [Container(width: 3, height: 16, color: Colors.orangeAccent), const SizedBox(width: 8), const Text('TRENDING PRODUCTS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Times New Roman'))]),
+                ),
+                const SizedBox(height: 16),
+
+                // Products Grid (Dynamically Filtered)
+                StreamBuilder<List<Product>>(
+                  stream: _databaseService.getProducts(),
+                  builder: (context, snapshot) {
+                    List<Product> productsToDisplay = (snapshot.hasData && snapshot.data!.isNotEmpty) ? snapshot.data! : _fallbackProducts;
+
+                    // --- APPLY SEARCH FILTER ---
+                    if (_searchQuery.isNotEmpty) {
+                      productsToDisplay = productsToDisplay.where((product) {
+                        return product.name.toLowerCase().contains(_searchQuery) ||
+                            product.category.toLowerCase().contains(_searchQuery);
+                      }).toList();
+                    }
+
+                    if (productsToDisplay.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Column(
+                            children: [
+                              Icon(Icons.search_off, size: 64, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Text('No products found for "$_searchQuery"', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: GridView.builder(
+                        shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: productsToDisplay.length,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.58, crossAxisSpacing: 12, mainAxisSpacing: 16),
+                        itemBuilder: (context, index) => _buildProductCard(productsToDisplay[index], index),
                       ),
                     );
                   },
-                  child: Column(
-                    children: [
-                      Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey.shade100),
-                          child: ClipOval(child: Image.network(_categories[index]['imageUrl']!, fit: BoxFit.cover))
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                          _categories[index]['name']!,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 1.2)
-                      )
-                    ],
-                  ),
-                );
-              },
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-
-          const SizedBox(height: 32),
-          // Trending Products Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(children: [Container(width: 3, height: 16, color: Colors.orangeAccent), const SizedBox(width: 8), const Text('TRENDING PRODUCTS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Times New Roman'))]),
-          ),
-          const SizedBox(height: 16),
-          // Products Grid
-          StreamBuilder<List<Product>>(
-            stream: _databaseService.getProducts(),
-            builder: (context, snapshot) {
-              List<Product> productsToDisplay = (snapshot.hasData && snapshot.data!.isNotEmpty) ? snapshot.data! : _fallbackProducts;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: GridView.builder(
-                  shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: productsToDisplay.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.58, crossAxisSpacing: 12, mainAxisSpacing: 16),
-                  itemBuilder: (context, index) => _buildProductCard(productsToDisplay[index], index),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

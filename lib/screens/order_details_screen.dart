@@ -13,10 +13,12 @@ import 'cancel_order_screen.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
-// --- IMPORTS FOR TRACKING AND REVIEWS ---
+// --- IMPORTS FOR TRACKING, REVIEWS, AND DYNAMIC RECOMMENDATIONS ---
 import 'track_package_screen.dart';
 import '../models/product_model.dart';
 import 'write_review_screen.dart';
+import 'product_details_screen.dart';
+import '../services/database_service.dart'; // <-- Imported to fetch dynamic products
 
 class OrderDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> orderData;
@@ -301,6 +303,7 @@ class OrderDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color brandColor = const Color(0xFF0F4C5C);
+    final DatabaseService databaseService = DatabaseService(); // For fetching dynamic recommendations
 
     final String orderId = orderData['orderId'] ?? 'Unknown ID';
     final int grandTotal = orderData['totalAmount'] ?? 0;
@@ -369,7 +372,6 @@ class OrderDetailsScreen extends StatelessWidget {
                   Align(
                     alignment: Alignment.centerRight,
                     child: GestureDetector(
-                      // --- CALLS THE NEW EMAIL INVOICE FUNCTION HERE ---
                       onTap: () => _generateAndShareInvoice(context),
                       child: Text('Invoice ∨', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w500)),
                     ),
@@ -456,6 +458,16 @@ class OrderDetailsScreen extends StatelessWidget {
                                     Text('Sold by: Decart Retail', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                                     const SizedBox(height: 4),
                                     Text('₹${i['price'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                    if (i['isGift'] == true) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.card_giftcard, size: 14, color: Colors.orange),
+                                          const SizedBox(width: 4),
+                                          Text('Gift Option Applied', style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
+                                        ],
+                                      )
+                                    ]
                                   ],
                                 ),
                               )
@@ -463,7 +475,6 @@ class OrderDetailsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
 
-                          // --- TRACK PACKAGE BUTTON ---
                           SizedBox(
                             width: double.infinity, height: 36,
                             child: ElevatedButton(
@@ -474,7 +485,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                   MaterialPageRoute(
                                     builder: (context) => TrackPackageScreen(
                                       orderData: orderData,
-                                      item: i, // Passing specific item being tracked
+                                      item: i,
                                     ),
                                   ),
                                 );
@@ -483,8 +494,6 @@ class OrderDetailsScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-
-                          // --- CANCEL ITEMS BUTTON ---
                           SizedBox(
                             width: double.infinity, height: 36,
                             child: OutlinedButton(
@@ -501,8 +510,6 @@ class OrderDetailsScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-
-                          // --- WRITE A PRODUCT REVIEW BUTTON ---
                           SizedBox(
                             width: double.infinity, height: 36,
                             child: OutlinedButton(
@@ -539,16 +546,36 @@ class OrderDetailsScreen extends StatelessWidget {
               child: Text('Frequently bought together with your items', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade900)),
             ),
             const SizedBox(height: 12),
+
+            // --- UPDATED: DYNAMIC RECOMMENDATIONS FROM FIRESTORE ---
             SizedBox(
               height: 220,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                children: [
-                  _buildRecommendationCard('Silicone Case Cover Compatible with...', '₹199', Icons.headphones),
-                  _buildRecommendationCard('Heavy Duty Carabiner (Black)', '₹249', Icons.shopping_bag),
-                  _buildRecommendationCard('Power Bank 4i 20000mAh', '₹1,499', Icons.battery_charging_full),
-                ],
+              child: StreamBuilder<List<Product>>(
+                stream: databaseService.getProducts(), // Fetching real products
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  List<Product> recommendedProducts = snapshot.data ?? [];
+
+                  if (recommendedProducts.isEmpty) {
+                    return const Center(child: Text("No recommendations available.", style: TextStyle(color: Colors.grey)));
+                  }
+
+                  // Shuffle and take up to 6 products for the horizontal list
+                  recommendedProducts.shuffle();
+                  final displayProducts = recommendedProducts.take(6).toList();
+
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: displayProducts.length,
+                    itemBuilder: (context, index) {
+                      return _buildDynamicRecommendationCard(context, displayProducts[index]);
+                    },
+                  );
+                },
               ),
             ),
             const SizedBox(height: 40),
@@ -571,37 +598,59 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecommendationCard(String title, String price, IconData icon) {
-    return Container(
-      width: 140,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(8)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Center(
-              child: Icon(icon, size: 60, color: Colors.blueGrey),
+  // --- NEW WIDGET FOR DYNAMIC PRODUCTS ---
+  Widget _buildDynamicRecommendationCard(BuildContext context, Product product) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailsScreen(
+              product: product,
+              wishlistIds: const {}, // Pass empty map or adapt if wishlist is available globally
+              onToggleWishlist: (id, name) {},
             ),
           ),
-          const SizedBox(height: 8),
-          Text(title, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.blue.shade700, fontSize: 12)),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.star, size: 12, color: Colors.orange.shade400),
-              Icon(Icons.star, size: 12, color: Colors.orange.shade400),
-              Icon(Icons.star, size: 12, color: Colors.orange.shade400),
-              Icon(Icons.star, size: 12, color: Colors.orange.shade400),
-              Icon(Icons.star_half, size: 12, color: Colors.orange.shade400),
-              const SizedBox(width: 4),
-              const Text('12k', style: TextStyle(fontSize: 10, color: Colors.grey)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(price, style: const TextStyle(color: Color(0xFFB12704), fontWeight: FontWeight.bold)),
-        ],
+        );
+      },
+      child: Container(
+        width: 140,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(8)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.network(
+                    product.imageUrls.isNotEmpty ? product.imageUrls[0] : '',
+                    fit: BoxFit.cover,
+                    errorBuilder: (c,e,s) => const Icon(Icons.image, size: 60, color: Colors.grey),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(product.name, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.blue.shade700, fontSize: 12)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.star, size: 12, color: Colors.orange.shade400),
+                Icon(Icons.star, size: 12, color: Colors.orange.shade400),
+                Icon(Icons.star, size: 12, color: Colors.orange.shade400),
+                Icon(Icons.star, size: 12, color: Colors.orange.shade400),
+                Icon(Icons.star_half, size: 12, color: Colors.orange.shade400),
+                const SizedBox(width: 4),
+                const Text('12k', style: TextStyle(fontSize: 10, color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('₹${product.price.toInt()}', style: const TextStyle(color: Color(0xFFB12704), fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }

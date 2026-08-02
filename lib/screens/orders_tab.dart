@@ -14,7 +14,7 @@ import 'order_details_screen.dart';
 // --- IMPORTS FOR PRODUCT REDIRECTION & REVIEWS ---
 import '../models/product_model.dart';
 import 'write_review_screen.dart';
-import 'product_details_screen.dart'; // <-- IMPORTED PRODUCT DETAILS SCREEN
+import 'product_details_screen.dart';
 import 'track_package_screen.dart';
 
 class OrdersTab extends StatefulWidget {
@@ -29,6 +29,9 @@ class OrdersTab extends StatefulWidget {
 class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMixin {
   final Color brandColor = const Color(0xFF0F4C5C);
   late TabController _tabController;
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   String _selectedFilter = 'past 3 months';
 
   @override
@@ -40,6 +43,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -270,7 +274,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
       await file.writeAsBytes(bytes);
 
       String username = 'decartofficial85@gmail.com';
-      String password = 'lxfe jakg mris ypcn'; // Ensure your app password is here
+      String password = 'YOUR_APP_PASSWORD'; // Ensure your app password is here
 
       final smtpServer = gmail(username, password);
 
@@ -329,12 +333,29 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                       child: SizedBox(
                         height: 40,
                         child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value.toLowerCase().trim();
+                            });
+                          },
                           decoration: InputDecoration(
                             hintText: 'Search all orders',
                             prefixIcon: const Icon(Icons.search, color: Colors.grey),
                             contentPadding: const EdgeInsets.symmetric(vertical: 0),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade400)),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade400)),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                              icon: const Icon(Icons.clear, size: 20, color: Colors.grey),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                                : null,
                           ),
                         ),
                       ),
@@ -346,7 +367,9 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        FocusScope.of(context).unfocus();
+                      },
                       child: const Text('Search Orders', style: TextStyle(color: Colors.white)),
                     )
                   ],
@@ -371,15 +394,21 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildOrdersList(user.uid),
-          const Center(child: Text("Buy Again Items Will Appear Here")),
-          const Center(child: Text("Not Yet Shipped Items Will Appear Here")),
+          // Tab 0: All Orders
+          _buildOrdersList(user.uid, filterTab: 'all'),
+
+          // Tab 1: Buy Again
+          _buildOrdersList(user.uid, filterTab: 'buy_again'),
+
+          // Tab 2: Not Yet Shipped
+          _buildOrdersList(user.uid, filterTab: 'not_shipped'),
         ],
       ),
     );
   }
 
-  Widget _buildOrdersList(String uid) {
+  // --- UPDATED TO HANDLE 'buy_again' FILTER ---
+  Widget _buildOrdersList(String uid, {String filterTab = 'all'}) {
     final int currentYear = DateTime.now().year;
     final List<String> filterOptions = [
       'past 3 months',
@@ -401,20 +430,75 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
 
         final orders = snapshot.data?.docs ?? [];
 
-        if (orders.isEmpty) {
+        // --- FILTER THE ORDERS DYNAMICALLY BASED ON TAB AND SEARCH BOX ---
+        final filteredOrders = orders.where((doc) {
+          final orderData = doc.data() as Map<String, dynamic>;
+          final String status = (orderData['status'] ?? 'Placed').toString().toLowerCase();
+
+          // 1. Check Tab Filter
+          if (filterTab == 'not_shipped') {
+            // Only show if it's NOT shipped, delivered, or cancelled
+            if (status == 'shipped' || status == 'out for delivery' || status == 'delivered' || status == 'cancelled') {
+              return false;
+            }
+          } else if (filterTab == 'buy_again') {
+            // ONLY show if it HAS been processed/shipped
+            if (status != 'shipped' && status != 'out for delivery' && status != 'delivered') {
+              return false;
+            }
+          }
+
+          // 2. Check Search Filter
+          if (_searchQuery.isNotEmpty) {
+            final String orderId = (orderData['orderId'] ?? '').toString().toLowerCase();
+
+            // Check if Order ID matches
+            bool matchesSearch = orderId.contains(_searchQuery);
+
+            // Check if ANY item name in the order matches
+            if (!matchesSearch) {
+              final List<dynamic> items = orderData['items'] ?? [];
+              for (var item in items) {
+                final String itemName = (item['name'] ?? '').toString().toLowerCase();
+                if (itemName.contains(_searchQuery)) {
+                  matchesSearch = true;
+                  break;
+                }
+              }
+            }
+
+            if (!matchesSearch) return false;
+          }
+
+          return true; // Passes all filters
+        }).toList();
+
+        if (filteredOrders.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey.shade300),
+                Icon(
+                    _searchQuery.isNotEmpty ? Icons.search_off : Icons.shopping_bag_outlined,
+                    size: 80,
+                    color: Colors.grey.shade300
+                ),
                 const SizedBox(height: 16),
-                const Text('No orders found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                    _searchQuery.isNotEmpty
+                        ? 'No matches found'
+                        : (filterTab == 'not_shipped'
+                        ? 'No un-shipped orders'
+                        : filterTab == 'buy_again' ? 'No items available to buy again' : 'No orders found'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+                ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: brandColor),
-                  onPressed: widget.onNavigateToHome,
-                  child: const Text('Start Shopping', style: TextStyle(color: Colors.white)),
-                )
+                if (_searchQuery.isEmpty && filterTab != 'not_shipped' && filterTab != 'buy_again')
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: brandColor),
+                    onPressed: widget.onNavigateToHome,
+                    child: const Text('Start Shopping', style: TextStyle(color: Colors.white)),
+                  )
               ],
             ),
           );
@@ -425,7 +509,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
           children: [
             Row(
               children: [
-                Text('${orders.length} orders placed in ', style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text('${filteredOrders.length} orders placed in ', style: const TextStyle(fontWeight: FontWeight.w500)),
                 Container(
                   height: 30,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -447,7 +531,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
               ],
             ),
             const SizedBox(height: 16),
-            ...orders.map((doc) => _buildOrderCard(doc)),
+            ...filteredOrders.map((doc) => _buildOrderCard(doc)), // Renders ONLY the filtered orders
           ],
         );
       },
@@ -652,7 +736,6 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                                             )
                                         );
                                       } else {
-                                        // Logic for product support can go here in the future
                                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product support opening...')));
                                       }
                                     },

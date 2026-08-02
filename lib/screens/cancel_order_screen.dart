@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// --- IMPORTS FOR SUMMARY REDIRECTION ---
+import 'cancel_summary_screen.dart';
+import 'home_screen.dart'; // Adjust this if your home layout file is named differently (e.g., home_screen.dart)
+
 class CancelOrderScreen extends StatefulWidget {
   final Map<String, dynamic> orderData;
 
@@ -53,7 +57,7 @@ class _CancelOrderScreenState extends State<CancelOrderScreen> {
     });
   }
 
-  // --- UPDATED: SAVES REASON TO THE SPECIFIC PRODUCT & MOVES TO CANCELLED DB ---
+  // --- UPDATED: SAVES REASON, MOVES TO CANCELLED DB & SHOWS SUMMARY SCREEN ---
   Future<void> _requestCancellation() async {
     final user = FirebaseAuth.instance.currentUser;
     final String orderId = widget.orderData['orderId'];
@@ -83,7 +87,6 @@ class _CancelOrderScreenState extends State<CancelOrderScreen> {
       cancelledData['cancelledAt'] = FieldValue.serverTimestamp();
 
       // 3. Use a WriteBatch for absolute safety
-      // This copies it to "cancelled_orders" and deletes it from "orders" at the exact same time
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
       DocumentReference activeOrderRef = FirebaseFirestore.instance
@@ -104,13 +107,31 @@ class _CancelOrderScreenState extends State<CancelOrderScreen> {
       await batch.commit();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Product cancelled successfully.'), backgroundColor: Colors.green),
-        );
+        // Collect the items the user actually cancelled to show on the summary screen
+        List<dynamic> justCancelledItems = [];
+        for (int i = 0; i < updatedItems.length; i++) {
+          if (_selectedItems[i]) {
+            justCancelledItems.add(updatedItems[i]);
+          }
+        }
 
-        // Pop back twice to return to the main Orders Tab so they see it is gone
-        Navigator.pop(context);
-        Navigator.pop(context);
+        // Navigate to the Success Summary Screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CancelSummaryScreen(
+              cancelledItems: justCancelledItems,
+              onNavigateToOrders: () {
+                // When they click "View your orders", return them entirely to the main tab layout
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MainScreen()), // Matches your main app layout
+                      (route) => false,
+                );
+              },
+            ),
+          ),
+        );
       }
     } catch (e) {
       setState(() => _isLoading = false);

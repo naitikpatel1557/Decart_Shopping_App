@@ -1,4 +1,10 @@
-Google App Passwords: lxfe jakg mris ypcn
+Checkout_screen.dart, order_details_screen.dart, orders_tab
+
+     -> Google App Passwords: lxfe jakg mris ypcn
+
+
+
+
 
 Admin Panel
    
@@ -43,8 +49,13 @@ User Panel
     -> User Review
     -> Browsing History (Product)
     -> Share product to another person
+    -> Add to cart
+    -> checkout order
     -> Place the order
     -> Generate the invoice bill PDF to send Mail
+
+
+
 
 
 Product Category

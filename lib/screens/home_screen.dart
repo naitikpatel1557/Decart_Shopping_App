@@ -11,7 +11,6 @@ import 'home_tab.dart';
 import 'categories_tab.dart';
 import 'wishlist_tab.dart';
 import 'account_tab.dart';
-import 'search_screen.dart';
 import 'notification_screen.dart';
 import 'my_coupons_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -28,9 +27,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final AuthService _authService = AuthService();
-
-  // --- NEW: Search Controller ---
-  final TextEditingController _searchController = TextEditingController();
 
   int _selectedIndex = 0;
 
@@ -55,12 +51,6 @@ class _MainScreenState extends State<MainScreen> {
 
   void _switchTab(int index) {
     setState(() { _selectedIndex = index; });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   @override
@@ -196,45 +186,6 @@ class _MainScreenState extends State<MainScreen> {
         ),
         const SizedBox(width: 4),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(65.0),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-
-            child: TextField(
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (query) {
-                if (query.trim().isNotEmpty) {
-                  FocusManager.instance.primaryFocus?.unfocus();
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SearchScreen(
-                          searchQuery: query.trim(),wishlistIds: _wishlistIds,
-                          onToggleWishlist: _toggleWishlist
-                      ),
-                    ),
-                  ).then((_) {
-                    _searchController.clear();
-                  });
-                }
-              },
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
-                hintText: 'Search for products...',
-                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 

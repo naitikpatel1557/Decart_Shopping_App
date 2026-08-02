@@ -8,15 +8,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Default fallback data if Firebase is empty or loading
-    final List<Map<String, String>> fallbackSections = [
-        // {'title': '1. Information We Collect', 'content': 'We collect information you provide directly to us, such as when you create or modify your account, request on-demand services, contact customer support, or otherwise communicate with us. This information may include: name, email, phone number, postal address, payment method, and other information you choose to provide.'},
-      // {'title': '2. How We Use Your Information', 'content': 'We may use the information we collect about you to provide, maintain, and improve our Services. This includes facilitating payments, sending receipts, providing products you request, authenticating users, and sending product updates and administrative messages.'},
-      // {'title': '3. Sharing of Information', 'content': 'We may share the information we collect about you as described in this Statement, including with vendors, consultants, marketing partners, and other service providers who need access to such information to carry out work on our behalf.'},
-      // {'title': '4. Security', 'content': 'We take reasonable measures to help protect information about you from loss, theft, misuse, unauthorized access, disclosure, alteration, and destruction. We use secure socket layer (SSL) technology for encrypted transactions.'},
-      // {'title': '5. Contact Us', 'content': 'If you have any questions about this Privacy Statement or your personal data, please contact our support team at care@decart.app.'},
-    ];
-
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -36,16 +27,31 @@ class PrivacyPolicyScreen extends StatelessWidget {
           stream: FirebaseFirestore.instance.collection('legal').doc('privacy_policy').snapshots(),
           builder: (context, snapshot) {
 
-            String effectiveDate = 'July 2026'; // Fallback date
-            List<dynamic> sections = fallbackSections;
+            // 1. Show a loading spinner while fetching data
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator(color: brandColor));
+            }
 
-            // If Firebase has data, override the defaults!
+            // 2. Handle errors
+            if (snapshot.hasError) {
+              return const Center(child: Text("Failed to load Privacy Policy."));
+            }
+
+            String effectiveDate = 'Updating...';
+            List<dynamic> sections = [];
+
+            // 3. Extract dynamic data from Firebase
             if (snapshot.hasData && snapshot.data!.exists) {
               final data = snapshot.data!.data() as Map<String, dynamic>;
               effectiveDate = data['effective_date'] ?? effectiveDate;
               if (data['sections'] != null) {
                 sections = data['sections'];
               }
+            }
+
+            // 4. Handle empty database state
+            if (sections.isEmpty) {
+              return const Center(child: Text("Privacy Policy will be updated soon.", style: TextStyle(color: Colors.grey)));
             }
 
             return SingleChildScrollView(
@@ -66,10 +72,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     Text('Effective Date: $effectiveDate', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                     const SizedBox(height: 24),
 
-                    // Dynamically build all sections from Firebase (or fallback)
+                    // 5. Dynamically build all sections from Firebase
                     ...sections.map((section) {
                       return _buildSection(
-                          section['title'] ?? 'Section',
+                          section['title'] ?? 'Section Title',
                           section['content'] ?? 'Content missing.'
                       );
                     }),
