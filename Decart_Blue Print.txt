@@ -1,3 +1,8 @@
+Fast2sms
+Id: technick1557@gmail.com
+pass: technick1557
+
+
 Checkout_screen.dart, order_details_screen.dart, orders_tab
 
      -> Google App Passwords: lxfe jakg mris ypcn
