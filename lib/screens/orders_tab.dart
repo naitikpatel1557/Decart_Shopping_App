@@ -16,6 +16,7 @@ import '../models/product_model.dart';
 import 'write_review_screen.dart';
 import 'product_details_screen.dart';
 import 'track_package_screen.dart';
+import 'seller_feedback_screen.dart';
 
 class OrdersTab extends StatefulWidget {
   final VoidCallback onNavigateToHome;
@@ -47,6 +48,150 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
     super.dispose();
   }
 
+  // ===========================================================================
+  // PRODUCT SUPPORT DIALOG LOGIC
+  // ===========================================================================
+  void _showProductSupportDialog(BuildContext context, Map<String, dynamic> item, String orderId) {
+    final TextEditingController descController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+              builder: (context, setDialogState) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  title: const Text('Get Product Support', style: TextStyle(fontWeight: FontWeight.bold)),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Issue with ${item['name']}? Describe it below and our support team will contact you.', style: const TextStyle(fontSize: 13)),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: descController,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: 'Describe the issue (e.g., defective, missing parts)...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD814), foregroundColor: Colors.black, elevation: 0),
+                      onPressed: isSubmitting ? null : () async {
+                        if (descController.text.trim().isEmpty) return;
+                        setDialogState(() => isSubmitting = true);
+                        try {
+                          final user = FirebaseAuth.instance.currentUser;
+                          await FirebaseFirestore.instance.collection('support_tickets').add({
+                            'userId': user?.uid,
+                            'orderId': orderId,
+                            'productId': item['productId'],
+                            'issue': descController.text.trim(),
+                            'status': 'Open',
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Support ticket created. We will contact you soon!'), backgroundColor: Colors.green));
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSubmitting = false);
+                        }
+                      },
+                      child: isSubmitting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) : const Text('Submit Ticket'),
+                    ),
+                  ],
+                );
+              }
+          );
+        }
+    );
+  }
+
+  // ===========================================================================
+  // DELIVERY FEEDBACK DIALOG LOGIC
+  // ===========================================================================
+  void _showDeliveryFeedbackDialog(BuildContext context, Map<String, dynamic> item, String orderId) {
+    int rating = 0;
+    final TextEditingController commentController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+              builder: (context, setDialogState) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  title: const Text('Delivery Feedback', style: TextStyle(fontWeight: FontWeight.bold)),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('How was the delivery experience?'),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (index) => IconButton(
+                          icon: Icon(index < rating ? Icons.star : Icons.star_border, color: Colors.amber, size: 32),
+                          onPressed: () => setDialogState(() => rating = index + 1),
+                        )),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: commentController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText: 'Any comments for the delivery driver?',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD814), foregroundColor: Colors.black, elevation: 0),
+                      onPressed: isSubmitting ? null : () async {
+                        if (rating == 0) return;
+                        setDialogState(() => isSubmitting = true);
+                        try {
+                          final user = FirebaseAuth.instance.currentUser;
+
+                          // Writing to the root collection 'delivery_feedback'
+                          await FirebaseFirestore.instance.collection('delivery_feedback').add({
+                            'userId': user?.uid,
+                            'orderId': orderId,
+                            'productId': item['productId'] ?? 'unknown',
+                            'rating': rating,
+                            'comment': commentController.text.trim(),
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Delivery feedback saved to database!'), backgroundColor: Colors.green));
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSubmitting = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                          }
+                        }
+                      },
+                      child: isSubmitting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) : const Text('Submit'),
+                    ),
+                  ],
+                );
+              }
+          );
+        }
+    );
+  }
+
   // --- FULLY INTEGRATED PDF INVOICE GENERATOR ---
   Future<void> _generateAndShareInvoice(BuildContext context, Map<String, dynamic> orderData) async {
     showDialog(
@@ -57,14 +202,11 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
 
     try {
       final pdf = pw.Document();
-
       final String orderId = orderData['orderId'] ?? 'Unknown ID';
       final num grandTotal = orderData['totalAmount'] ?? 0;
       final List<dynamic> items = orderData['items'] ?? [];
-
       final Map<String, dynamic> address = orderData['shippingAddress'] ?? {};
       final String shipName = address['title'] ?? address['name'] ?? 'Customer';
-
       String rawAddress = address['fullAddress'] ?? address['address'] ?? '';
 
       if (rawAddress.trim().isEmpty) {
@@ -98,7 +240,6 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
       final Timestamp? orderDateStamp = orderData['orderDate'];
       final String placedDate = orderDateStamp != null ? DateFormat('d MMMM yyyy').format(orderDateStamp.toDate()) : '';
       final String userEmail = FirebaseAuth.instance.currentUser?.email ?? '';
-
       final int codFee = orderData['paymentMethod'] == 'cod' ? 17 : 0;
       final num itemsSubtotal = grandTotal - codFee;
 
@@ -394,20 +535,14 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Tab 0: All Orders
           _buildOrdersList(user.uid, filterTab: 'all'),
-
-          // Tab 1: Buy Again
           _buildOrdersList(user.uid, filterTab: 'buy_again'),
-
-          // Tab 2: Not Yet Shipped
           _buildOrdersList(user.uid, filterTab: 'not_shipped'),
         ],
       ),
     );
   }
 
-  // --- UPDATED TO HANDLE 'buy_again' FILTER ---
   Widget _buildOrdersList(String uid, {String filterTab = 'all'}) {
     final int currentYear = DateTime.now().year;
     final List<String> filterOptions = [
@@ -430,32 +565,24 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
 
         final orders = snapshot.data?.docs ?? [];
 
-        // --- FILTER THE ORDERS DYNAMICALLY BASED ON TAB AND SEARCH BOX ---
         final filteredOrders = orders.where((doc) {
           final orderData = doc.data() as Map<String, dynamic>;
           final String status = (orderData['status'] ?? 'Placed').toString().toLowerCase();
 
-          // 1. Check Tab Filter
           if (filterTab == 'not_shipped') {
-            // Only show if it's NOT shipped, delivered, or cancelled
             if (status == 'shipped' || status == 'out for delivery' || status == 'delivered' || status == 'cancelled') {
               return false;
             }
           } else if (filterTab == 'buy_again') {
-            // ONLY show if it HAS been processed/shipped
             if (status != 'shipped' && status != 'out for delivery' && status != 'delivered') {
               return false;
             }
           }
 
-          // 2. Check Search Filter
           if (_searchQuery.isNotEmpty) {
             final String orderId = (orderData['orderId'] ?? '').toString().toLowerCase();
-
-            // Check if Order ID matches
             bool matchesSearch = orderId.contains(_searchQuery);
 
-            // Check if ANY item name in the order matches
             if (!matchesSearch) {
               final List<dynamic> items = orderData['items'] ?? [];
               for (var item in items) {
@@ -470,7 +597,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
             if (!matchesSearch) return false;
           }
 
-          return true; // Passes all filters
+          return true;
         }).toList();
 
         if (filteredOrders.isEmpty) {
@@ -531,7 +658,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
               ],
             ),
             const SizedBox(height: 16),
-            ...filteredOrders.map((doc) => _buildOrderCard(doc)), // Renders ONLY the filtered orders
+            ...filteredOrders.map((doc) => _buildOrderCard(doc)),
           ],
         );
       },
@@ -667,7 +794,6 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                 ...items.map((item) {
                   final i = item as Map<String, dynamic>;
 
-                  // --- REDIRECTION FUNCTION ---
                   void _goToProductDetails() {
                     final productDetails = Product(
                         id: i['productId'] ?? 'unknown_id',
@@ -720,26 +846,24 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                                     Text('Return window closed', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
 
                                   const SizedBox(height: 12),
+
                                   _buildActionButton(
                                     text: isDelivered ? 'Get product support' : 'Track package',
                                     isYellow: true,
                                     onTap: () {
                                       if (!isDelivered) {
-                                        // Navigate to Track Package Screen
                                         Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                                builder: (context) => TrackPackageScreen(
-                                                  orderData: orderData,
-                                                  item: i, // Passing the specific item being tracked
-                                                )
+                                                builder: (context) => TrackPackageScreen(orderData: orderData, item: i)
                                             )
                                         );
                                       } else {
-                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product support opening...')));
+                                        _showProductSupportDialog(context, i, orderId);
                                       }
                                     },
                                   ),
+
                                   if (!isDelivered)
                                     _buildActionButton(
                                         text: 'View or edit order',
@@ -750,9 +874,22 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                                           );
                                         }
                                     ),
+
                                   if (isDelivered) ...[
-                                    _buildActionButton(text: 'Leave seller feedback', onTap: () {}),
-                                    _buildActionButton(text: 'Leave delivery feedback', onTap: () {}),
+                                    _buildActionButton(
+                                      text: 'Leave seller feedback',
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => SellerFeedbackScreen(item: i, orderId: orderId)),
+                                        );
+                                      },
+                                    ),
+
+                                    _buildActionButton(
+                                      text: 'Leave delivery feedback',
+                                      onTap: () => _showDeliveryFeedbackDialog(context, i, orderId),
+                                    ),
                                   ],
 
                                   _buildActionButton(
@@ -777,6 +914,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                                   if (isDelivered)
                                     Row(
                                       children: [
+                                        // --- UPDATED: BUY IT AGAIN ACTION ---
                                         Expanded(
                                           child: ElevatedButton.icon(
                                             style: ElevatedButton.styleFrom(
@@ -788,10 +926,34 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                                             ),
                                             icon: const Icon(Icons.refresh, size: 16),
                                             label: const Text('Buy it again', style: TextStyle(fontSize: 12)),
-                                            onPressed: () {},
+                                            onPressed: () async {
+                                              try {
+                                                final user = FirebaseAuth.instance.currentUser;
+                                                if (user != null) {
+                                                  // Securely write directly to the user's cart subcollection
+                                                  await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').doc(i['productId']).set({
+                                                    'productId': i['productId'],
+                                                    'name': i['name'],
+                                                    'price': i['price'],
+                                                    'imageUrl': i['imageUrl'],
+                                                    'quantity': FieldValue.increment(1), // Adds 1 if already in cart!
+                                                  }, SetOptions(merge: true));
+
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item successfully added to your cart!'), backgroundColor: Colors.green));
+                                                  }
+                                                }
+                                              } catch (e) {
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not add item to cart: $e'), backgroundColor: Colors.red));
+                                                }
+                                              }
+                                            },
                                           ),
                                         ),
                                         const SizedBox(width: 8),
+
+                                        // --- UPDATED: VIEW YOUR ITEM ACTION ---
                                         Expanded(
                                           child: OutlinedButton(
                                             style: OutlinedButton.styleFrom(
@@ -799,7 +961,7 @@ class _OrdersTabState extends State<OrdersTab> with SingleTickerProviderStateMix
                                               padding: const EdgeInsets.symmetric(vertical: 0),
                                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                             ),
-                                            onPressed: () {},
+                                            onPressed: _goToProductDetails, // Connects directly to the existing view logic
                                             child: const Text('View your item', style: TextStyle(fontSize: 12)),
                                           ),
                                         ),
